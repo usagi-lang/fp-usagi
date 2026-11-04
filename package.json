@@ -18,6 +18,7 @@
     "node": ">=23.6"
   },
   "license": "MIT",
+  "homepage": "https://usagi-lang.github.io/fp-usagi/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/usagi-lang/fp-usagi.git"

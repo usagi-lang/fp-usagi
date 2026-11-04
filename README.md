@@ -10,6 +10,9 @@
 ![paradigm: functional](https://img.shields.io/badge/paradigm-functional-8A2BE2)
 ![runtime deps: 0](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
 ![license: MIT](https://img.shields.io/badge/license-MIT-blue)
+[![Pages](https://github.com/usagi-lang/fp-usagi/actions/workflows/pages.yml/badge.svg)](https://github.com/usagi-lang/fp-usagi/actions/workflows/pages.yml)
+
+**[▶ 플레이그라운드에서 바로 실행해 보기](https://usagi-lang.github.io/fp-usagi/)**
 
 [빠른 시작](#빠른-시작) · [둘러보기](#둘러보기) · [함수형 기능](#함수형-기능) · [사전](#사전) · [명세](#명세)
 
@@ -68,7 +71,7 @@ node src/cli.ts
 
 ## 플레이그라운드
 
-브라우저에서 코드를 고치고 바로 실행하는 웹페이지입니다.
+[usagi-lang.github.io/fp-usagi](https://usagi-lang.github.io/fp-usagi/)에서 코드를 고치고 바로 실행할 수 있습니다. `main`에 푸시하면 GitHub Actions가 테스트와 빌드를 거쳐 자동으로 다시 배포합니다.
 
 - 문법 색, 예제 불러오기, 입력(`야푸`), 사전, 숫자·글 인코더를 갖췄습니다.
 - `⌘↵`(Windows는 `Ctrl+↵`)로 실행합니다.
@@ -85,7 +88,7 @@ pnpm web
 pnpm web:build
 ```
 
-배포용 정적 파일을 `dist/`에 만듭니다. GitHub Pages 같은 정적 호스팅에 그대로 올리면 됩니다.
+배포용 정적 파일을 `dist/`에 만듭니다. 배포 워크플로는 [.github/workflows/pages.yml](.github/workflows/pages.yml)에 있습니다.
 
 ## 둘러보기
 
