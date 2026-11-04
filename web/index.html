@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>우사기랭 플레이그라운드</title>
+    <meta name="description" content="우사기가 하는 말로 쓰는 함수형 프로그래밍 언어, 우사기랭을 브라우저에서 바로 실행해 보세요." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f6d75c'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%23473a1c'%3E%EC%9A%B0%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gasoek+One&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Gothic+Coding:wght@400;700&display=swap" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="우사기랭 처음으로">
+          <span class="wordmark">우사기랭</span>
+          <span class="bubble" aria-hidden="true">우라-야하!</span>
+        </a>
+        <p class="tagline">우사기 말로 쓰는 함수형 언어</p>
+        <div class="toolbar">
+          <label class="picker">
+            <span class="visually-hidden">예제 열기</span>
+            <select id="example">
+              <option value="" selected>예제 열기…</option>
+            </select>
+          </label>
+          <a class="ghost" href="#docs">둘러보기</a>
+          <button id="share" class="ghost" type="button">공유</button>
+          <button id="run" class="primary" type="button" data-running="false">
+            <span class="label">실행</span>
+            <kbd id="run-key">⌘↵</kbd>
+          </button>
+        </div>
+      </header>
+
+      <main class="workbench">
+        <section class="pane editor-pane" aria-labelledby="filename">
+          <div class="pane-bar">
+            <span id="filename" class="filename">twice.yaha</span>
+            <span class="hint">Tab 들여쓰기 · <span id="run-hint">⌘↵</span> 실행</span>
+          </div>
+          <div class="editor">
+            <pre id="gutter" class="gutter" aria-hidden="true">1</pre>
+            <div class="code">
+              <pre class="highlight" aria-hidden="true"><code id="highlight"></code></pre>
+              <textarea
+                id="source"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                autocorrect="off"
+                wrap="off"
+                aria-label="우사기랭 코드"
+              ></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="side">
+          <div class="pane output-pane">
+            <div class="pane-bar">
+              <span>출력</span>
+              <button id="clear" class="ghost small" type="button">지우기</button>
+            </div>
+            <pre id="output" class="output" aria-live="polite" tabindex="0"></pre>
+          </div>
+
+          <div class="pane drawer">
+            <div class="tabs" role="tablist" aria-label="보조 도구">
+              <button id="tab-input" role="tab" aria-selected="true" aria-controls="panel-input" type="button">입력</button>
+              <button id="tab-dict" role="tab" aria-selected="false" aria-controls="panel-dict" tabindex="-1" type="button">사전</button>
+              <button id="tab-tools" role="tab" aria-selected="false" aria-controls="panel-tools" tabindex="-1" type="button">도구</button>
+            </div>
+
+            <div id="panel-input" class="tab-panel" role="tabpanel" aria-labelledby="tab-input">
+              <label class="field-label" for="stdin"><code>야푸</code>가 한 글자씩 읽어 갈 글</label>
+              <textarea id="stdin" class="stdin" spellcheck="false" placeholder="여기에 쓴 글이 입력이 됩니다"></textarea>
+            </div>
+
+            <div id="panel-dict" class="tab-panel" role="tabpanel" aria-labelledby="tab-dict" hidden>
+              <p class="field-label">누르면 커서 자리에 넣습니다</p>
+              <ul id="dict" class="dict"></ul>
+            </div>
+
+            <div id="panel-tools" class="tab-panel tools" role="tabpanel" aria-labelledby="tab-tools" hidden>
+              <div class="tool">
+                <label class="field-label" for="num-input">숫자를 우사기 말로</label>
+                <div class="tool-row">
+                  <input id="num-input" inputmode="numeric" autocomplete="off" maxlength="18" placeholder="72" />
+                  <button id="num-insert" class="ghost small" type="button" disabled>편집기에 넣기</button>
+                </div>
+                <code id="num-output" class="tool-output" data-empty="true"></code>
+              </div>
+              <div class="tool">
+                <label class="field-label" for="text-input">글을 출력하는 프로그램</label>
+                <textarea id="text-input" rows="2" spellcheck="false" placeholder="야하! 우라~"></textarea>
+                <button id="text-make" class="ghost small" type="button">프로그램 만들기</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status" class="status" data-state="idle">준비됨</span>
+        <span id="cursor" class="cursor">1줄 1칸</span>
+      </footer>
+    </div>
+
+    <section id="docs" class="docs" aria-labelledby="docs-title">
+      <div class="docs-intro">
+        <h2 id="docs-title">둘러보기</h2>
+        <p>숫자는 <code>야하!!!</code>, 변수는 <code>우라</code>, 함수는 <code>하아</code>. 우사기의 말만으로 함수를 값처럼 주고받는 언어입니다. 예제를 편집기로 열어 직접 고쳐 보세요.</p>
+        <nav aria-label="둘러보기 목차">
+          <ol id="toc" class="toc"></ol>
+        </nav>
+      </div>
+      <div id="tour" class="tour"></div>
+    </section>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
