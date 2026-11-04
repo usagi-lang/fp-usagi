@@ -830,6 +830,40 @@ input {
   color: var(--ink);
 }
 
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 1.75rem clamp(1rem, 4vw, 3rem) 2.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration-color: var(--accent-hover);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.site-footer a:hover {
+  text-decoration-color: var(--ink);
+}
+
+.site-footer .meta {
+  color: var(--ink-3);
+}
+
 @media (max-width: 960px) {
   .tagline {
     display: none;
