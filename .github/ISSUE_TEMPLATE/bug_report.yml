@@ -1,0 +1,66 @@
+name: 버그 신고
+description: 우사기랭이나 플레이그라운드가 예상과 다르게 동작할 때 알려 주세요.
+title: "[버그] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        알려 주셔서 고맙습니다. 문제가 다시 생기는 가장 짧은 코드를 함께 적어 주시면 빨리 고칠 수 있습니다.
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: 어디서 일어났나요?
+      options:
+        - 플레이그라운드 (웹)
+        - ura 명령 (Node)
+        - 둘 다
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: 코드
+      description: 문제가 생기는 `.yaha` 코드를 붙여 넣어 주세요. 플레이그라운드라면 **공유** 버튼으로 만든 링크도 좋습니다.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: 입력
+      description: "`야푸`로 읽는 입력이 있다면 적어 주세요."
+      render: text
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 결과
+      description: 어떤 출력이나 동작을 기대했는지 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 결과
+      description: 출력이나 오류 메시지(`하아? 하아? …`)를 그대로 붙여 넣어 주세요.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 환경
+      description: 플레이그라운드라면 브라우저와 운영체제, ura 명령이라면 `node --version` 결과를 적어 주세요.
+      placeholder: Chrome 140 / macOS 26, 또는 Node 24.22.1
+
+  - type: textarea
+    id: more
+    attributes:
+      label: 더 알려 줄 것
+      description: 스크린샷이나 짐작 가는 원인이 있다면 적어 주세요.

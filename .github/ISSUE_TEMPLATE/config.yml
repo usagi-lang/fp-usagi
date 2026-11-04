@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 플레이그라운드에서 먼저 해 보기
+    url: https://usagi-lang.github.io/fp-usagi/
+    about: 이슈를 쓰기 전에 브라우저에서 코드를 바로 실행해 볼 수 있습니다.
