@@ -6,7 +6,7 @@
 
 *A functional esolang spoken entirely in Usagi.*
 
-![Node.js ≥ 23.6](https://img.shields.io/badge/node-%E2%89%A5%2023.6-339933?logo=nodedotjs&logoColor=white)
+![Node.js ≥ 24](https://img.shields.io/badge/node-%E2%89%A5%2024-339933?logo=nodedotjs&logoColor=white)
 ![paradigm: functional](https://img.shields.io/badge/paradigm-functional-8A2BE2)
 ![runtime deps: 0](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
 ![license: MIT](https://img.shields.io/badge/license-MIT-blue)
@@ -51,7 +51,7 @@
 
 ## 빠른 시작
 
-Node.js 23.6 이상이 필요합니다.
+Node.js 24 이상이 필요합니다. 저장소의 `.nvmrc`에 버전이 적혀 있어서 `nvm use`로 맞출 수 있습니다.
 
 ```bash
 node src/cli.ts examples/fibonacci.yaha
