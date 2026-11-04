@@ -6,6 +6,8 @@
 
 *A functional esolang spoken entirely in Usagi.*
 
+치지직 스트리머 **[투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)**님에게서 아이디어를 얻어 함께 만든 공동 개발 프로젝트입니다.
+
 ![Node.js ≥ 24](https://img.shields.io/badge/node-%E2%89%A5%2024-339933?logo=nodedotjs&logoColor=white)
 ![paradigm: functional](https://img.shields.io/badge/paradigm-functional-8A2BE2)
 ![runtime deps: 0](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
@@ -321,10 +323,6 @@ pnpm test
 ```bash
 pnpm typecheck
 ```
-
-## 함께 만든 사람
-
-우사기랭은 치지직 스트리머 [투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)님에게서 아이디어를 얻어 시작했고, 함께 개발한 공동 개발 프로젝트입니다.
 
 ## 라이선스
 
