@@ -322,6 +322,10 @@ pnpm test
 pnpm typecheck
 ```
 
+## 함께 만든 사람
+
+우사기랭은 치지직 스트리머 [투명고양이](https://chzzk.naver.com/39beba96a36c6a595cedb1bf2b769c7e)님에게서 아이디어를 얻어 시작했고, 함께 개발한 공동 개발 프로젝트입니다.
+
 ## 라이선스
 
 [MIT](LICENSE)
