@@ -14,7 +14,8 @@ export type IO = {
 type Env = { slot: number; value: Value; next: Env } | null;
 type Scope = { table: Map<number, Closure>; parent: Scope | null };
 export type Closure = { kind: 'closure'; name: string; params: number[]; body: Node[]; env: Env; scope: Scope };
-export type Value = bigint | Closure;
+export type List = { kind: 'cons'; head: Value; tail: List } | { kind: 'empty' };
+export type Value = bigint | Closure | List;
 
 type Outcome =
   | { kind: 'done'; env: Env }
@@ -23,14 +24,24 @@ type Outcome =
 
 type Cursor = { nodes: Node[]; i: number };
 
+const EMPTY: List = { kind: 'empty' };
 const COMPARISONS = new Set<Keyword>(['equal', 'less', 'greater']);
+const PRINTS = new Set<Keyword>(['print', 'charPrint', 'textPrint']);
 const OPERATORS = new Map<Keyword, number>([
   ['input', 0],
+  ['empty', 0],
   ['add', 2],
   ['subtract', 2],
   ['multiply', 2],
   ['divide', 2],
   ['remainder', 2],
+  ['cons', 2],
+  ['head', 1],
+  ['tail', 1],
+  ['range', 2],
+  ['map', 2],
+  ['filter', 2],
+  ['fold', 3],
 ]);
 
 export function run(source: string, io: IO): void {
@@ -97,6 +108,8 @@ export class Session {
         this.io.write(this.show(this.expr(cur, env, scope, true)) + '\n');
       } else if (keyword === 'charPrint') {
         this.io.write(this.char(this.expr(cur, env, scope, true), node));
+      } else if (keyword === 'textPrint') {
+        this.io.write(this.text(this.expr(cur, env, scope, true), node));
       } else if (keyword === 'return') {
         return this.returns(node, cur) ? this.tail(cur, env, scope) : { kind: 'return', value: 0n };
       } else if (keyword === 'assignment') {
@@ -151,7 +164,7 @@ export class Session {
     }
     if (word.kind !== 'keyword') throw this.misplaced(node);
     const keyword = word.keyword;
-    if (keyword === 'print' || keyword === 'charPrint') {
+    if (PRINTS.has(keyword)) {
       this.expr(cur, env, scope, false);
     } else if (keyword === 'return') {
       if (this.returns(node, cur)) this.expr(cur, env, scope, false);
@@ -238,8 +251,73 @@ export class Session {
   }
 
   private operate(keyword: Keyword, args: Value[], at: Token): Value {
-    if (keyword === 'input') return BigInt(this.io.read());
-    return this.arithmetic(keyword, args[0], args[1], at);
+    switch (keyword) {
+      case 'input':
+        return BigInt(this.io.read());
+      case 'empty':
+        return EMPTY;
+      case 'cons':
+        return { kind: 'cons', head: args[0], tail: this.list(args[1], at) };
+      case 'head':
+        return this.filled(args[0], at, '첫 값이').head;
+      case 'tail':
+        return this.filled(args[0], at, '나머지가').tail;
+      case 'range':
+        return this.range(this.integer(args[0], at), this.integer(args[1], at));
+      case 'map': {
+        const fn = this.function(args[0], 1, at);
+        return this.build(this.items(args[1], at).map((item) => this.call(fn, [item])));
+      }
+      case 'filter': {
+        const fn = this.function(args[0], 1, at);
+        return this.build(this.items(args[1], at).filter((item) => this.integer(this.call(fn, [item]), at) !== 0n));
+      }
+      case 'fold': {
+        const fn = this.function(args[0], 2, at);
+        return this.items(args[2], at).reduce((acc, item) => this.call(fn, [acc, item]), args[1]);
+      }
+      default:
+        return this.arithmetic(keyword, args[0], args[1], at);
+    }
+  }
+
+  private list(value: Value, at: Token): List {
+    if (typeof value === 'object' && value.kind !== 'closure') return value;
+    throw new UsagiError(`'${at.text}'에는 목록이 와야 하는데 ${this.kind(value)} 왔어`, at);
+  }
+
+  private filled(value: Value, at: Token, part: string): Extract<List, { kind: 'cons' }> {
+    const list = this.list(value, at);
+    if (list.kind === 'empty') throw new UsagiError(`'${at.text}'... 빈 목록에는 ${part} 없어`, at);
+    return list;
+  }
+
+  private items(value: Value, at: Token): Value[] {
+    const items: Value[] = [];
+    for (let list = this.list(value, at); list.kind === 'cons'; list = list.tail) items.push(list.head);
+    return items;
+  }
+
+  private build(items: Value[]): List {
+    let list = EMPTY;
+    for (let k = items.length - 1; k >= 0; k--) list = { kind: 'cons', head: items[k], tail: list };
+    return list;
+  }
+
+  private range(from: bigint, to: bigint): List {
+    let list = EMPTY;
+    for (let k = to; k >= from; k--) list = { kind: 'cons', head: k, tail: list };
+    return list;
+  }
+
+  private function(value: Value, arity: number, at: Token): Closure {
+    if (typeof value !== 'object' || value.kind !== 'closure') {
+      throw new UsagiError(`'${at.text}'에는 함수가 와야 하는데 ${this.kind(value)} 왔어`, at);
+    }
+    if (value.params.length !== arity) {
+      throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 ${arity}개여야 하는데 ${value.params.length}개야`, at);
+    }
+    return value;
   }
 
   private call(fn: Closure, args: Value[]): Value {
@@ -263,7 +341,7 @@ export class Session {
     const word = token.word;
     if (word.kind === 'funcCall') return this.find(scope, word.index, token);
     const value = word.kind === 'varCall' ? this.lookup(env, word.slot) : undefined;
-    if (typeof value === 'object') return value;
+    if (typeof value === 'object' && value.kind === 'closure') return value;
     throw new UsagiError(`'${token.text}'... 함수가 아니라서 부를 수 없어`, token);
   }
 
@@ -298,7 +376,7 @@ export class Session {
   }
 
   private isStatementOperator(keyword: Keyword): boolean {
-    return (OPERATORS.get(keyword) ?? 0) > 0 || keyword === 'input';
+    return keyword !== 'empty' && OPERATORS.has(keyword);
   }
 
   private isComparison(token: Token): boolean {
@@ -306,8 +384,13 @@ export class Session {
   }
 
   private integer(value: Value, at: Token): bigint {
-    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 정수가 와야 하는데 함수가 왔어`, at);
+    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 정수가 와야 하는데 ${this.kind(value)} 왔어`, at);
     return value;
+  }
+
+  private kind(value: Value): string {
+    if (typeof value === 'bigint') return '정수가';
+    return value.kind === 'closure' ? '함수가' : '목록이';
   }
 
   private arithmetic(op: Keyword, left: Value, right: Value, at: Token): bigint {
@@ -321,10 +404,24 @@ export class Session {
   }
 
   private compare(op: Keyword, left: Value, right: Value, at: Token): boolean {
-    if (op === 'equal') return left === right;
+    if (op === 'equal') return this.same(left, right);
     const a = this.integer(left, at);
     const b = this.integer(right, at);
     return op === 'less' ? a < b : a > b;
+  }
+
+  private same(a: Value, b: Value): boolean {
+    for (;;) {
+      if (typeof a === 'bigint' || typeof b === 'bigint' || a.kind === 'closure' || b.kind === 'closure') return a === b;
+      if (a.kind === 'empty' || b.kind === 'empty') return a.kind === b.kind;
+      if (!this.same(a.head, b.head)) return false;
+      a = a.tail;
+      b = b.tail;
+    }
+  }
+
+  private text(value: Value, at: Token): string {
+    return this.items(value, at).map((item) => this.char(item, at)).join('');
   }
 
   private char(value: Value, at: Token): string {
@@ -334,7 +431,11 @@ export class Session {
   }
 
   private show(value: Value): string {
-    return typeof value === 'bigint' ? value.toString() : value.name;
+    if (typeof value === 'bigint') return value.toString();
+    if (value.kind === 'closure') return value.name;
+    const parts: string[] = [];
+    for (let list: List = value; list.kind === 'cons'; list = list.tail) parts.push(this.show(list.head));
+    return `[${parts.join(', ')}]`;
   }
 
   private misplaced(token: Token): UsagiError {

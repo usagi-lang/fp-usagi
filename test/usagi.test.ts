@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Session, run } from '../src/interpreter.ts';
-import { encodeNumber, encodeText } from '../src/encode.ts';
+import { encodeList, encodeNumber, encodeText } from '../src/encode.ts';
 import { UsagiError } from '../src/error.ts';
 
 function io(input: string) {
@@ -35,7 +35,12 @@ describe('예제', () => {
   test('fibonacci', () => assert.equal(exec(example('fibonacci.yaha')), '6765\n'));
   test('gcd', () => assert.equal(exec(example('gcd.yaha')), '12\n'));
   test('twice', () => assert.equal(exec(example('twice.yaha')), '16\n81\n'));
-  test('list', () => assert.equal(exec(example('list.yaha')), lines('1', '2', '3', '4', '5', '1', '4', '9', '16', '25', '55')));
+  test('closure-list', () => assert.equal(exec(example('closure-list.yaha')), lines('1', '2', '3', '4', '5', '1', '4', '9', '16', '25', '55')));
+  test('list', () => {
+    assert.equal(exec(example('list.yaha')), lines('[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]', '[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]', '[1, 3, 5, 7, 9]', '385'));
+  });
+  test('primes', () => assert.equal(exec(example('primes.yaha')), '[2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]\n'));
+  test('reverse', () => assert.equal(exec(example('reverse.yaha'), '우사기랭!\n다음 줄'), '!랭기사우\n'));
   test('echo', () => assert.equal(exec(example('echo.yaha'), '야하! 우라~\n'), '야하! 우라~\n'));
   test('fizzbuzz', () => {
     const expected = Array.from({ length: 100 }, (_, k) => {
@@ -185,6 +190,67 @@ describe('함수', () => {
   });
 });
 
+describe('목록', () => {
+  const list = (...items: number[]) => items.reduceRight((rest, n) => `유후 ${encodeNumber(BigInt(n))} ${rest}`, '우이');
+
+  test('우이 는 빈 목록이고 유후 는 앞에 값을 붙인다', () => {
+    assert.equal(exec(lines('미이이야하 우이', `미이이야하 ${list(1, 2, 3)}`)), lines('[]', '[1, 2, 3]'));
+  });
+
+  test('유후후 는 첫 값, 유후후후 는 나머지', () => {
+    assert.equal(exec(lines(`미이이야하 유후후 ${list(7, 8, 9)}`, `미이이야하 유후후후 ${list(7, 8, 9)}`, `미이이야하 유후후후 ${list(7)}`)), lines('7', '[8, 9]', '[]'));
+  });
+
+  test('목록 안에 목록과 함수를 넣을 수 있다', () => {
+    assert.equal(exec(lines('우라-야하! 하아!', '하아?', `미이이야하 유후 ${list(1)} 유후 우이 유후 하아 우이`)), '[[1], [], 하아]\n');
+  });
+
+  test('유후후후후 는 두 수 사이의 정수 목록', () => {
+    assert.equal(exec(lines('미이이야하 유후후후후 이야하!! 야하!!', '미이이야하 유후후후후 야하!!! 야하!')), lines('[-2, -1, 0, 1, 2]', '[]'));
+  });
+
+  test('야앗 은 map, 야아앗 은 filter, 야아아앗 은 fold', () => {
+    const range = '유후후후후 야하! 야하!!!!!!';
+    assert.equal(exec(`미이이야하 야앗 우라-야하! 우 하! 푸루야 푸릿 우 우 하? ${range}`), '[2, 4, 6, 8, 10, 12]\n');
+    assert.equal(exec(`미이이야하 야아앗 우라-야하! 우 하! 푸루야 푸루루루 우 야하!!! 야하! 야하 하? ${range}`), '[4, 5, 6]\n');
+    assert.equal(exec(`미이이야하 야아아앗 우라-야하! 우 우라 하! 푸루야 유후 우라 우 하? 우이 ${range}`), '[6, 5, 4, 3, 2, 1]\n');
+  });
+
+  test('이름 있는 함수도 넘길 수 있다', () => {
+    const source = lines('우라-야하! 하아! 우', '푸루야 푸리리릿 우 우', '하아?', `미이이야하 야앗 하아 ${list(1, 2, 3)}`);
+    assert.equal(exec(source), '[1, 4, 9]\n');
+  });
+
+  test('푸루 는 목록을 값으로 비교한다', () => {
+    assert.equal(exec(lines(
+      `미이이야하 푸루 ${list(1, 2)} ${list(1, 2)} 야하! 야하`,
+      `미이이야하 푸루 ${list(1, 2)} ${list(1, 3)} 야하! 야하`,
+      `미이이야하 푸루 ${list(1)} 우이 야하! 야하`,
+      '미이이야하 푸루 우이 우이 야하! 야하',
+      '미이이야하 푸루 우이 야하 야하! 야하',
+    )), lines('1', '0', '0', '1', '0'));
+  });
+
+  test('빈 목록을 조건으로 재귀한다', () => {
+    const source = lines('우라-야하! 하아! 우 우라', '푸루야 푸루 우 우이 우라 하아- 유후후후 우 푸릿 우라 유후후 우', '하아?', `미이이야하 하아- 유후후후후 야하! ${encodeNumber(100000n)} 야하`);
+    assert.equal(exec(source), '5000050000\n');
+  });
+
+  test('긴 목록도 멀쩡하다', () => {
+    assert.equal(exec(`미이이야하 야아아앗 우라-야하! 우 우라 하! 푸루야 푸릿 우 우라 하? 야하 야앗 우라-야하! 우 하! 푸루야 푸리리릿 우 야하!! 하? 유후후후후 야하! ${encodeNumber(200000n)}`), `${200000n * 200001n}\n`);
+  });
+
+  test('미이이이이야하 는 글자 목록을 한 번에 출력한다', () => {
+    assert.equal(exec(`미이이이이야하 ${list(0xc6b0, 0xb77c, 33, 10)}`), '우라!\n');
+    assert.equal(exec('미이이이이야하 우이'), '');
+  });
+
+  test('목록은 바뀌지 않는다', () => {
+    const source = lines(`미야아아 우 ${list(2, 3)}`, '미야아아 우라 유후 야하! 우', '미이이야하 우', '미이이야하 우라');
+    assert.equal(exec(source), lines('[2, 3]', '[1, 2, 3]'));
+  });
+});
+
 describe('입출력과 읽기', () => {
   test('미이이이야하 는 글자를, 야푸 는 입력 한 글자를', () => {
     assert.equal(exec(`미이이이야하 ${encodeNumber(0xc6b0n)}`), '우');
@@ -217,6 +283,24 @@ describe('오류', () => {
   test('함수로 계산', () => fails(lines('우라-야하! 하아!', '하아?', '미이이야하 푸릿 하아 야하!'), "'푸릿'에는 정수가 와야 하는데 함수가 왔어"));
   test('조건식에 값이 모자라다', () => fails('미이이야하 푸루 야하 야하 야하!', '값이 와야 하는데 코드가 끝났어'));
   test('없는 글자', () => fails('미이이이야하 이야하!', '글자는 없어'));
+  test('빈 목록의 첫 값과 나머지', () => {
+    fails('미이이야하 유후후 우이', "'유후후'... 빈 목록에는 첫 값이 없어");
+    fails('미이이야하 유후후후 우이', "'유후후후'... 빈 목록에는 나머지가 없어");
+  });
+  test('목록이 아닌 값', () => {
+    fails('미이이야하 유후 야하! 야하!!', "'유후'에는 목록이 와야 하는데 정수가 왔어");
+    fails('미이이야하 유후후 야하!', "'유후후'에는 목록이 와야 하는데 정수가 왔어");
+    fails('미이이이이야하 야하!', "'미이이이이야하'에는 목록이 와야 하는데 정수가 왔어");
+  });
+  test('목록으로 계산', () => fails('미이이야하 푸릿 우이 야하!', "'푸릿'에는 정수가 와야 하는데 목록이 왔어"));
+  test('함수 자리에 다른 값', () => fails('미이이야하 야앗 야하! 우이', "'야앗'에는 함수가 와야 하는데 정수가 왔어"));
+  test('넘긴 함수의 매개변수 개수', () => {
+    fails('미이이야하 야앗 우라-야하! 우 우라 하! 하? 우이', "'야앗'에 넘긴 함수는 매개변수가 1개여야 하는데 2개야");
+    fails('미이이야하 야아아앗 우라-야하! 우 하! 하? 야하 우이', "'야아아앗'에 넘긴 함수는 매개변수가 2개여야 하는데 1개야");
+  });
+  test('걸러 내는 함수는 정수를 돌려줘야 한다', () => fails('미이이야하 야아앗 우라-야하! 우 하! 푸루야 우이 하? 유후 야하! 우이', "'야아앗'에는 정수가 와야 하는데 목록이 왔어"));
+  test('목록 출력에 없는 글자', () => fails('미이이이이야하 유후 이야하! 우이', '글자는 없어'));
+  test('빈 목록만 덩그러니', () => fails('우이', '덩그러니'));
   test('꼬리가 아닌 깊은 재귀', () => {
     const source = lines('우라-야하! 하아! 우', '푸루 우 야하 푸루야 야하', '푸루야 푸릿 야하! 하아- 푸리릿 우 야하!', '하아?', `미이이야하 하아- ${encodeNumber(1000000n)}`);
     fails(source, '너무 깊이');
@@ -231,7 +315,13 @@ describe('인코더', () => {
   });
 
   test('글 왕복', () => {
-    const text = '우라! Hello\n푸루루\t🐰';
+    const text = '우라! Hello\n푸루루\t🐰\n\n끝';
     assert.equal(exec(encodeText(text)), text);
+    assert.equal(exec(encodeText('')), '');
+  });
+
+  test('글을 목록 식으로', () => {
+    assert.equal(exec(`미이이야하 ${encodeList('AB')}`), '[65, 66]\n');
+    assert.equal(exec(`미이이이이야하 ${encodeList('우라~')}`), '우라~');
   });
 });

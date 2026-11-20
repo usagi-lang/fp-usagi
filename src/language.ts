@@ -3,6 +3,7 @@ export type Language = {
   Negative: string;
   Print: string;
   CharPrint: string;
+  TextPrint: string;
   Input: string;
   Equal: string;
   Less: string;
@@ -22,6 +23,14 @@ export type Language = {
   FunctionEndSuffix: string;
   FunctionCallSuffix: string;
   Assignment: string;
+  Empty: string;
+  Cons: string;
+  Head: string;
+  Tail: string;
+  Range: string;
+  Map: string;
+  Filter: string;
+  Fold: string;
 };
 
 export const LANGUAGE: Language = {
@@ -29,6 +38,7 @@ export const LANGUAGE: Language = {
   Negative: '이',
   Print: '미이이야하',
   CharPrint: '미이이이야하',
+  TextPrint: '미이이이이야하',
   Input: '야푸',
   Equal: '푸루',
   Less: '푸루루',
@@ -48,4 +58,12 @@ export const LANGUAGE: Language = {
   FunctionEndSuffix: '?',
   FunctionCallSuffix: '-',
   Assignment: '미야아아',
+  Empty: '우이',
+  Cons: '유후',
+  Head: '유후후',
+  Tail: '유후후후',
+  Range: '유후후후후',
+  Map: '야앗',
+  Filter: '야아앗',
+  Fold: '야아아앗',
 };

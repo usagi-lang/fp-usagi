@@ -14,8 +14,14 @@ export function encodeNumber(n: bigint): string {
   return r === 0n ? product : `${LANGUAGE.Add} ${product} ${encodeNumber(r)}`;
 }
 
+export function encodeList(text: string): string {
+  const items = [...text].map((ch) => `${LANGUAGE.Cons} ${encodeNumber(BigInt(ch.codePointAt(0)!))}`);
+  return [...items, LANGUAGE.Empty].join('\n');
+}
+
 export function encodeText(text: string): string {
-  return [...text].map((ch) => `${LANGUAGE.CharPrint} ${encodeNumber(BigInt(ch.codePointAt(0)!))}`).join('\n') + '\n';
+  const lines = text.match(/[^\n]*\n|[^\n]+/g) ?? [];
+  return lines.map((line) => `${LANGUAGE.TextPrint}\n${encodeList(line)}\n`).join('\n');
 }
 
 function isqrt(n: bigint): bigint {

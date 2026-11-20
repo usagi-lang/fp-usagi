@@ -26,6 +26,7 @@
   --t-cmp: oklch(0.5 0.1 205);
   --t-io: oklch(0.5 0.11 118);
   --t-bind: oklch(0.47 0.13 298);
+  --t-list: oklch(0.49 0.11 190);
   --t-ret: oklch(0.38 0.07 62);
   --t-block: oklch(0.52 0.05 72);
   --t-comment: oklch(0.6 0.03 80);
@@ -67,6 +68,7 @@
     --t-cmp: oklch(0.8 0.09 205);
     --t-io: oklch(0.83 0.1 118);
     --t-bind: oklch(0.8 0.1 298);
+    --t-list: oklch(0.8 0.1 190);
     --t-ret: oklch(0.9 0.05 80);
     --t-block: oklch(0.72 0.04 80);
     --t-comment: oklch(0.6 0.025 80);
@@ -428,6 +430,7 @@ input {
 .t-cmp { color: var(--t-cmp); }
 .t-io { color: var(--t-io); }
 .t-bind { color: var(--t-bind); font-weight: 700; }
+.t-list { color: var(--t-list); font-weight: 700; }
 .t-ret { color: var(--t-ret); font-weight: 700; }
 .t-block { color: var(--t-block); font-weight: 700; }
 .t-comment { color: var(--t-comment); }

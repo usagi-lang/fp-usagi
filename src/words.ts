@@ -1,10 +1,11 @@
 import type { Language } from './language.ts';
 
 export type Keyword =
-  | 'print' | 'charPrint' | 'input'
+  | 'print' | 'charPrint' | 'textPrint' | 'input'
   | 'equal' | 'less' | 'greater'
   | 'add' | 'subtract' | 'multiply' | 'divide' | 'remainder'
-  | 'return' | 'blockStart' | 'blockEnd' | 'functionStart' | 'assignment';
+  | 'return' | 'blockStart' | 'blockEnd' | 'functionStart' | 'assignment'
+  | 'empty' | 'cons' | 'head' | 'tail' | 'range' | 'map' | 'filter' | 'fold';
 
 export type Word =
   | { kind: 'keyword'; keyword: Keyword }
@@ -20,6 +21,7 @@ export type Word =
 const KEYWORDS: [keyof Language, Keyword][] = [
   ['Print', 'print'],
   ['CharPrint', 'charPrint'],
+  ['TextPrint', 'textPrint'],
   ['Input', 'input'],
   ['Equal', 'equal'],
   ['Less', 'less'],
@@ -34,6 +36,14 @@ const KEYWORDS: [keyof Language, Keyword][] = [
   ['BlockEnd', 'blockEnd'],
   ['FunctionStart', 'functionStart'],
   ['Assignment', 'assignment'],
+  ['Empty', 'empty'],
+  ['Cons', 'cons'],
+  ['Head', 'head'],
+  ['Tail', 'tail'],
+  ['Range', 'range'],
+  ['Map', 'map'],
+  ['Filter', 'filter'],
+  ['Fold', 'fold'],
 ];
 
 const VARIABLE_LETTERS = new Set(['우', '라', '아']);

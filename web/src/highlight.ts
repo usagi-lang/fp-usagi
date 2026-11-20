@@ -7,6 +7,7 @@ const words = new Words(LANGUAGE);
 const KEYWORD_CLASS: Record<Keyword, string> = {
   print: 'io',
   charPrint: 'io',
+  textPrint: 'io',
   input: 'io',
   assignment: 'bind',
   add: 'op',
@@ -21,6 +22,14 @@ const KEYWORD_CLASS: Record<Keyword, string> = {
   blockStart: 'block',
   blockEnd: 'block',
   functionStart: 'decl',
+  empty: 'list',
+  cons: 'list',
+  head: 'list',
+  tail: 'list',
+  range: 'list',
+  map: 'list',
+  filter: 'list',
+  fold: 'list',
 };
 
 export function tokenClass(text: string): string {
