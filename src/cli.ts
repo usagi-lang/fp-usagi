@@ -5,14 +5,16 @@ import { createInterface } from 'node:readline';
 import { Session } from './interpreter.ts';
 import { encodeNumber, encodeText } from './encode.ts';
 import { UsagiError } from './error.ts';
+import pkg from '../package.json' with { type: 'json' };
 
-const USAGE = `우사기랭 — 우라-야하!
+const USAGE = `우사기랭 ${pkg.version} — 우라-야하!
 
 사용법:
   ura <파일.yaha>    프로그램 실행
   ura                대화형 모드 (빈 줄: 실행, :exit: 끝)
   ura num <정수>     정수를 우사기 말로 바꿔줌
-  ura encode [글]    글을 출력하는 프로그램을 만들어줌 (글이 없으면 표준 입력을 읽음)`;
+  ura encode [글]    글을 출력하는 프로그램을 만들어줌 (글이 없으면 표준 입력을 읽음)
+  ura --version      버전 보기`;
 
 function stdinReader(): () => number {
   const decoder = new TextDecoder();
@@ -52,7 +54,7 @@ function report(err: unknown): void {
 
 function repl(): void {
   const session = new Session({ write: (text) => process.stdout.write(text), read: () => -1 });
-  console.log('우사기랭 (.yaha)\n코드를 쓰고 빈 줄을 넣으면 실행돼. :exit 로 끝내.\n');
+  console.log(`우사기랭 ${pkg.version} (.yaha)\n코드를 쓰고 빈 줄을 넣으면 실행돼. :exit 로 끝내.\n`);
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '>>> ' });
   let source = '';
   rl.prompt();
@@ -81,6 +83,10 @@ function main(args: string[]): number | undefined {
   const [command, ...more] = args;
   if (command === '-h' || command === '--help') {
     console.log(USAGE);
+    return 0;
+  }
+  if (command === '-v' || command === '--version') {
+    console.log(pkg.version);
     return 0;
   }
   try {

@@ -13,6 +13,7 @@ const KEYWORD_CLASS: Record<Keyword, string> = {
   subtract: 'op',
   multiply: 'op',
   divide: 'op',
+  remainder: 'op',
   equal: 'cmp',
   less: 'cmp',
   greater: 'cmp',

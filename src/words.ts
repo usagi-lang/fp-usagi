@@ -3,7 +3,7 @@ import type { Language } from './language.ts';
 export type Keyword =
   | 'print' | 'charPrint' | 'input'
   | 'equal' | 'less' | 'greater'
-  | 'add' | 'subtract' | 'multiply' | 'divide'
+  | 'add' | 'subtract' | 'multiply' | 'divide' | 'remainder'
   | 'return' | 'blockStart' | 'blockEnd' | 'functionStart' | 'assignment';
 
 export type Word =
@@ -28,6 +28,7 @@ const KEYWORDS: [keyof Language, Keyword][] = [
   ['Subtract', 'subtract'],
   ['Multiply', 'multiply'],
   ['Divide', 'divide'],
+  ['Remainder', 'remainder'],
   ['Return', 'return'],
   ['BlockStart', 'blockStart'],
   ['BlockEnd', 'blockEnd'],

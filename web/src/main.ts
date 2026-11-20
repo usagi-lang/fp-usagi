@@ -5,6 +5,7 @@ import { EXAMPLES } from './examples.ts';
 import type { Example } from './examples.ts';
 import { escape, highlight, inline } from './highlight.ts';
 import { Runner } from './runner.ts';
+import { version } from '../../package.json';
 
 type State = 'idle' | 'busy' | 'ok' | 'error';
 type Draft = { source: string; name: string; input: string };
@@ -27,6 +28,8 @@ const numberInput = byId<HTMLInputElement>('num-input');
 const numberOutput = byId<HTMLElement>('num-output');
 const numberInsert = byId<HTMLButtonElement>('num-insert');
 const textInput = byId<HTMLTextAreaElement>('text-input');
+
+byId<HTMLElement>('version').textContent = `우사기랭 ${version}`;
 
 const DRAFT_KEY = 'usagi-lang:draft';
 const runner = new Runner();

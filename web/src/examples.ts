@@ -7,6 +7,7 @@ const LIST: Omit<Example, 'source'>[] = [
   { id: 'hello', title: 'Hello, world!', input: '' },
   { id: 'factorial', title: '팩토리얼', input: '' },
   { id: 'fibonacci', title: '피보나치', input: '' },
+  { id: 'gcd', title: '최대공약수 (조건식)', input: '' },
   { id: 'list', title: '함수로 만든 목록', input: '' },
   { id: 'fizzbuzz', title: '피즈버즈', input: '' },
   { id: 'echo', title: '메아리 (입력 사용)', input: '야하! 우라~\n' },

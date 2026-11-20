@@ -11,6 +11,7 @@ export type Language = {
   Subtract: string;
   Multiply: string;
   Divide: string;
+  Remainder: string;
   Return: string;
   BlockStart: string;
   BlockEnd: string;
@@ -36,6 +37,7 @@ export const LANGUAGE: Language = {
   Subtract: '푸리릿',
   Multiply: '푸리리릿',
   Divide: '푸리리리릿',
+  Remainder: '푸리리리리릿',
   Return: '푸루야',
   BlockStart: '하!',
   BlockEnd: '하?',

@@ -24,7 +24,14 @@ type Outcome =
 type Cursor = { nodes: Node[]; i: number };
 
 const COMPARISONS = new Set<Keyword>(['equal', 'less', 'greater']);
-const ARITHMETIC = new Set<Keyword>(['add', 'subtract', 'multiply', 'divide']);
+const OPERATORS = new Map<Keyword, number>([
+  ['input', 0],
+  ['add', 2],
+  ['subtract', 2],
+  ['multiply', 2],
+  ['divide', 2],
+  ['remainder', 2],
+]);
 
 export function run(source: string, io: IO): void {
   new Session(io).run(source);
@@ -91,14 +98,14 @@ export class Session {
       } else if (keyword === 'charPrint') {
         this.io.write(this.char(this.expr(cur, env, scope, true), node));
       } else if (keyword === 'return') {
-        return this.ret(cur, env, scope);
+        return this.returns(node, cur) ? this.tail(cur, env, scope) : { kind: 'return', value: 0n };
       } else if (keyword === 'assignment') {
         const slot = this.target(cur, node);
         env = { slot, value: this.expr(cur, env, scope, true), next: env };
       } else if (COMPARISONS.has(keyword)) {
         const outcome = this.condition(node, cur, env, scope);
         if (outcome) return outcome;
-      } else if (ARITHMETIC.has(keyword) || keyword === 'input') {
+      } else if (this.isStatementOperator(keyword)) {
         cur.i--;
         this.expr(cur, env, scope, true);
       } else {
@@ -109,10 +116,7 @@ export class Session {
   }
 
   private condition(first: Token, cur: Cursor, env: Env, scope: Scope): Outcome | null {
-    const ops = this.comparisons(first, cur);
-    const left = this.expr(cur, env, scope, true);
-    const right = this.expr(cur, env, scope, true);
-    const holds = ops.some((op) => this.compare(op, left, right, first));
+    const holds = this.test(first, cur, env, scope, true);
     const next = cur.nodes[cur.i];
     if (!next) throw new UsagiError('조건문 다음에 할 일이 없어', first);
     if (next.kind === 'block') {
@@ -125,12 +129,14 @@ export class Session {
     return null;
   }
 
-  private comparisons(first: Token, cur: Cursor): Keyword[] {
+  private test(first: Token, cur: Cursor, env: Env, scope: Scope, live: boolean): boolean {
     const ops = [(first.word as { keyword: Keyword }).keyword];
     for (let next = cur.nodes[cur.i]; next?.kind === 'token' && this.isComparison(next); next = cur.nodes[++cur.i]) {
       ops.push((next.word as { keyword: Keyword }).keyword);
     }
-    return ops;
+    const left = this.expr(cur, env, scope, live);
+    const right = this.expr(cur, env, scope, live);
+    return live && ops.some((op) => this.compare(op, left, right, first));
   }
 
   private skip(cur: Cursor, env: Env, scope: Scope): void {
@@ -148,17 +154,15 @@ export class Session {
     if (keyword === 'print' || keyword === 'charPrint') {
       this.expr(cur, env, scope, false);
     } else if (keyword === 'return') {
-      if (this.startsExpr(cur.nodes[cur.i])) this.expr(cur, env, scope, false);
+      if (this.returns(node, cur)) this.expr(cur, env, scope, false);
     } else if (keyword === 'assignment') {
       this.target(cur, node);
       this.expr(cur, env, scope, false);
     } else if (COMPARISONS.has(keyword)) {
-      this.comparisons(node, cur);
-      this.expr(cur, env, scope, false);
-      this.expr(cur, env, scope, false);
+      this.test(node, cur, env, scope, false);
       if (!cur.nodes[cur.i]) throw new UsagiError('조건문 다음에 할 일이 없어', node);
       this.skip(cur, env, scope);
-    } else if (ARITHMETIC.has(keyword) || keyword === 'input') {
+    } else if (this.isStatementOperator(keyword)) {
       cur.i--;
       this.expr(cur, env, scope, false);
     } else {
@@ -166,14 +170,30 @@ export class Session {
     }
   }
 
-  private ret(cur: Cursor, env: Env, scope: Scope): Outcome {
+  private returns(at: Token, cur: Cursor): boolean {
     const next = cur.nodes[cur.i];
-    if (!this.startsExpr(next)) return { kind: 'return', value: 0n };
-    if (next.kind === 'token' && (next.word.kind === 'funcCall' || next.word.kind === 'varCall')) {
-      cur.i++;
-      const fn = this.callee(next, env, scope);
-      const args = fn.params.map(() => this.expr(cur, env, scope, true));
-      return { kind: 'tail', fn, args };
+    return this.startsExpr(next) && next!.line === at.line;
+  }
+
+  private tail(cur: Cursor, env: Env, scope: Scope): Outcome {
+    const node = cur.nodes[cur.i];
+    if (node?.kind === 'token') {
+      const word = node.word;
+      if (word.kind === 'funcCall' || word.kind === 'varCall') {
+        cur.i++;
+        const fn = this.callee(node, env, scope);
+        return { kind: 'tail', fn, args: fn.params.map(() => this.expr(cur, env, scope, true)) };
+      }
+      if (word.kind === 'keyword' && COMPARISONS.has(word.keyword)) {
+        cur.i++;
+        if (this.test(node, cur, env, scope, true)) {
+          const outcome = this.tail(cur, env, scope);
+          this.expr(cur, env, scope, false);
+          return outcome;
+        }
+        this.expr(cur, env, scope, false);
+        return this.tail(cur, env, scope);
+      }
     }
     return { kind: 'return', value: this.expr(cur, env, scope, true) };
   }
@@ -197,16 +217,29 @@ export class Session {
         const args = fn.params.map(() => this.expr(cur, env, scope, live));
         return live ? this.call(fn, args) : 0n;
       }
-      case 'keyword':
-        if (ARITHMETIC.has(word.keyword)) {
-          const left = this.expr(cur, env, scope, live);
-          const right = this.expr(cur, env, scope, live);
-          return live ? this.arithmetic(word.keyword, left, right, node) : 0n;
-        }
-        if (word.keyword === 'input') return live ? BigInt(this.io.read()) : 0n;
+      case 'keyword': {
+        if (COMPARISONS.has(word.keyword)) return this.choose(node, cur, env, scope, live);
+        const arity = OPERATORS.get(word.keyword);
+        if (arity === undefined) break;
+        const args: Value[] = [];
+        for (let k = 0; k < arity; k++) args.push(this.expr(cur, env, scope, live));
+        return live ? this.operate(word.keyword, args, node) : 0n;
+      }
     }
     if (word.kind === 'unknown') throw new UsagiError(`'${node.text}'... 우사기는 그런 말 안 해`, node);
     throw new UsagiError(`'${node.text}'... 여기엔 값이 와야 해`, node);
+  }
+
+  private choose(first: Token, cur: Cursor, env: Env, scope: Scope, live: boolean): Value {
+    const holds = this.test(first, cur, env, scope, live);
+    const yes = this.expr(cur, env, scope, live && holds);
+    const no = this.expr(cur, env, scope, live && !holds);
+    return holds ? yes : no;
+  }
+
+  private operate(keyword: Keyword, args: Value[], at: Token): Value {
+    if (keyword === 'input') return BigInt(this.io.read());
+    return this.arithmetic(keyword, args[0], args[1], at);
   }
 
   private call(fn: Closure, args: Value[]): Value {
@@ -260,8 +293,12 @@ export class Session {
     if (node.kind === 'lambda') return true;
     if (node.kind !== 'token') return false;
     const word = node.word;
-    if (word.kind === 'keyword') return ARITHMETIC.has(word.keyword) || word.keyword === 'input';
+    if (word.kind === 'keyword') return OPERATORS.has(word.keyword) || COMPARISONS.has(word.keyword);
     return word.kind !== 'unknown' && word.kind !== 'funcDecl' && word.kind !== 'funcEnd';
+  }
+
+  private isStatementOperator(keyword: Keyword): boolean {
+    return (OPERATORS.get(keyword) ?? 0) > 0 || keyword === 'input';
   }
 
   private isComparison(token: Token): boolean {
@@ -269,7 +306,7 @@ export class Session {
   }
 
   private integer(value: Value, at: Token): bigint {
-    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 함수 말고 정수가 필요해`, at);
+    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 정수가 와야 하는데 함수가 왔어`, at);
     return value;
   }
 
@@ -280,15 +317,14 @@ export class Session {
     if (op === 'subtract') return a - b;
     if (op === 'multiply') return a * b;
     if (b === 0n) throw new UsagiError('0으로는 나눌 수 없어', at);
-    return a / b;
+    return op === 'divide' ? a / b : a % b;
   }
 
   private compare(op: Keyword, left: Value, right: Value, at: Token): boolean {
+    if (op === 'equal') return left === right;
     const a = this.integer(left, at);
     const b = this.integer(right, at);
-    if (op === 'equal') return a === b;
-    if (op === 'less') return a < b;
-    return a > b;
+    return op === 'less' ? a < b : a > b;
   }
 
   private char(value: Value, at: Token): string {

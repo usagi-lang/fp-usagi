@@ -33,6 +33,7 @@ describe('예제', () => {
   test('hello', () => assert.equal(exec(example('hello.yaha')), 'Hello, world!\n'));
   test('factorial', () => assert.equal(exec(example('factorial.yaha')), '2432902008176640000\n'));
   test('fibonacci', () => assert.equal(exec(example('fibonacci.yaha')), '6765\n'));
+  test('gcd', () => assert.equal(exec(example('gcd.yaha')), '12\n'));
   test('twice', () => assert.equal(exec(example('twice.yaha')), '16\n81\n'));
   test('list', () => assert.equal(exec(example('list.yaha')), lines('1', '2', '3', '4', '5', '1', '4', '9', '16', '25', '55')));
   test('echo', () => assert.equal(exec(example('echo.yaha'), '야하! 우라~\n'), '야하! 우라~\n'));
@@ -71,6 +72,12 @@ describe('계산과 조건', () => {
     assert.equal(exec('미이이야하 푸리리리릿 이야하!!!!!!! 야하!!'), '-3\n');
   });
 
+  test('푸리리리리릿 은 나머지이고 부호는 나뉘는 수를 따른다', () => {
+    assert.equal(exec('미이이야하 푸리리리리릿 야하!!!!!!! 야하!!!'), '1\n');
+    assert.equal(exec('미이이야하 푸리리리리릿 이야하!!!!!!! 야하!!'), '-1\n');
+    assert.equal(exec('미이이야하 푸리리리리릿 야하!!!!!!! 이야하!!'), '1\n');
+  });
+
   test('큰 정수도 정확하다', () => {
     assert.equal(exec(`미이이야하 푸리리릿 ${encodeNumber(10n ** 20n)} ${encodeNumber(10n ** 20n)}`), `${10n ** 40n}\n`);
   });
@@ -98,6 +105,29 @@ describe('계산과 조건', () => {
     assert.equal(exec(lines('푸루 야하! 야하!! 푸루 야하! 야하! 미이이야하 야하!', '미이이야하 야하!!')), '2\n');
   });
 
+  test('값 자리의 푸루 는 조건식이다', () => {
+    assert.equal(exec('미이이야하 푸루루 야하!! 야하!!! 야하!!!!!!! 야하!!!!!!!!'), '7\n');
+    assert.equal(exec('미이이야하 푸루루루 야하!! 야하!!! 야하!!!!!!! 야하!!!!!!!!'), '8\n');
+    assert.equal(exec('미이이야하 푸루 푸루루 야하!!! 야하!!! 야하! 야하'), '1\n');
+  });
+
+  test('조건식은 고른 쪽만 계산한다', () => {
+    assert.equal(exec('미이이야하 푸루 야하 야하 야하!! 푸리리리릿 야하! 야하'), '2\n');
+    assert.equal(exec('미이이야하 푸루 야하 야하! 푸리리리릿 야하! 야하 야하!!!'), '3\n');
+    assert.equal(exec(lines('미이이야하 푸루 야하 야하 야하 야푸', '미이이야하 야푸'), 'A'), lines('0', '65'));
+  });
+
+  test('조건식은 겹쳐 쓸 수 있다', () => {
+    const sign = (n: number) => exec(`미이이야하 푸루루 ${encodeNumber(BigInt(n))} 야하 이야하! 푸루 ${encodeNumber(BigInt(n))} 야하 야하 야하!`);
+    assert.equal(sign(-5), '-1\n');
+    assert.equal(sign(0), '0\n');
+    assert.equal(sign(5), '1\n');
+  });
+
+  test('푸루 는 함수도 비교한다', () => {
+    assert.equal(exec(lines('우라-야하! 하아!', '하아?', '우라-야하! 하아아!', '하아아?', '미이이야하 푸루 하아 하아 야하! 야하', '미이이야하 푸루 하아 하아아 야하! 야하')), lines('1', '0'));
+  });
+
   test('블록 안에서 묶은 값은 블록 밖에서 보이지 않는다', () => {
     assert.equal(exec(lines('미야아아 우 야하!', '푸루 야하 야하 하! 미야아아 우 야하!! 미이이야하 우 하?', '미이이야하 우')), lines('2', '1'));
   });
@@ -114,6 +144,11 @@ describe('함수', () => {
 
   test('이름 있는 함수는 블록이 시작될 때의 값을 본다', () => {
     assert.equal(exec(lines('미야아아 우라 야하!!!!!', '우라-야하! 하아! 우우우', '푸루야 우라', '하아?', '미이이야하 하아- 야하!')), '0\n');
+  });
+
+  test('푸루야 는 같은 줄의 값만 돌려준다', () => {
+    const source = lines('우라-야하! 하아! 우', '푸루 우 야하 푸루야', '푸루 우 야하! 푸루야 야하!!!', '푸루야 야하!!!!!!!', '하아?', '미이이야하 하아- 야하', '미이이야하 하아- 야하!', '미이이야하 하아- 야하!!');
+    assert.equal(exec(source), lines('0', '3', '7'));
   });
 
   test('함수 안의 함수는 바깥 매개변수를 기억한다', () => {
@@ -133,6 +168,11 @@ describe('함수', () => {
 
   test('꼬리 재귀는 십만 번 돌아도 멀쩡하다', () => {
     const source = lines('우라-야하! 하아! 우 우라', '푸루 우 야하 푸루야 우라', '푸루야 하아- 푸리릿 우 야하! 푸릿 우라 우', '하아?', `미이이야하 하아- ${encodeNumber(100000n)} 야하`);
+    assert.equal(exec(source), '5000050000\n');
+  });
+
+  test('조건식 안의 꼬리 호출도 스택을 쓰지 않는다', () => {
+    const source = lines('우라-야하! 하아! 우 우라', '푸루야 푸루 우 야하 우라 하아- 푸리릿 우 야하! 푸릿 우라 우', '하아?', `미이이야하 하아- ${encodeNumber(100000n)} 야하`);
     assert.equal(exec(source), '5000050000\n');
   });
 
@@ -170,8 +210,12 @@ describe('오류', () => {
   test('대입 다음엔 변수', () => fails('미야아아 야하! 야하!', '변수가 와야'));
   test('이름 없는 함수는 하! 로 본문을 연다', () => fails('미야아아 우 우라-야하! 우 푸루야 우', '본문을 열어야'));
   test('조건문 다음에 할 일이 없다', () => fails('푸루 야하 야하', '할 일이 없어'));
-  test('0으로 나누기', () => fails('미이이야하 푸리리리릿 야하! 야하', '0으로는 나눌 수 없어'));
-  test('함수로 계산', () => fails(lines('우라-야하! 하아!', '하아?', '미이이야하 푸릿 하아 야하!'), '정수가 필요해'));
+  test('0으로 나누기', () => {
+    fails('미이이야하 푸리리리릿 야하! 야하', '0으로는 나눌 수 없어');
+    fails('미이이야하 푸리리리리릿 야하! 야하', '0으로는 나눌 수 없어');
+  });
+  test('함수로 계산', () => fails(lines('우라-야하! 하아!', '하아?', '미이이야하 푸릿 하아 야하!'), "'푸릿'에는 정수가 와야 하는데 함수가 왔어"));
+  test('조건식에 값이 모자라다', () => fails('미이이야하 푸루 야하 야하 야하!', '값이 와야 하는데 코드가 끝났어'));
   test('없는 글자', () => fails('미이이이야하 이야하!', '글자는 없어'));
   test('꼬리가 아닌 깊은 재귀', () => {
     const source = lines('우라-야하! 하아! 우', '푸루 우 야하 푸루야 야하', '푸루야 푸릿 야하! 하아- 푸리릿 우 야하!', '하아?', `미이이야하 하아- ${encodeNumber(1000000n)}`);
