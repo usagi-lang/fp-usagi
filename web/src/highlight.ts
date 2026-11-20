@@ -30,6 +30,9 @@ const KEYWORD_CLASS: Record<Keyword, string> = {
   map: 'list',
   filter: 'list',
   fold: 'list',
+  partial: 'fn',
+  compose: 'fn',
+  pipe: 'fn',
 };
 
 export function tokenClass(text: string): string {

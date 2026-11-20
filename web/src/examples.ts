@@ -4,6 +4,7 @@ export type Example = { id: string; title: string; input: string; source: string
 
 const LIST: Omit<Example, 'source'>[] = [
   { id: 'twice', title: '두 번 적용하기', input: '' },
+  { id: 'pipeline', title: '부분 적용 · 합성 · 파이프', input: '' },
   { id: 'hello', title: 'Hello, world!', input: '' },
   { id: 'factorial', title: '팩토리얼', input: '' },
   { id: 'fibonacci', title: '피보나치', input: '' },

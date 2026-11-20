@@ -14,13 +14,15 @@ export type IO = {
 type Env = { slot: number; value: Value; next: Env } | null;
 type Scope = { table: Map<number, Closure>; parent: Scope | null };
 export type Closure = { kind: 'closure'; name: string; params: number[]; body: Node[]; env: Env; scope: Scope };
+export type Composed = { kind: 'composed'; name: string; first: Func; then: Func };
+export type Func = Closure | Composed;
 export type List = { kind: 'cons'; head: Value; tail: List } | { kind: 'empty' };
-export type Value = bigint | Closure | List;
+export type Value = bigint | Func | List;
 
 type Outcome =
   | { kind: 'done'; env: Env }
   | { kind: 'return'; value: Value }
-  | { kind: 'tail'; fn: Closure; args: Value[] };
+  | { kind: 'tail'; fn: Func; args: Value[] };
 
 type Cursor = { nodes: Node[]; i: number };
 
@@ -42,6 +44,9 @@ const OPERATORS = new Map<Keyword, number>([
   ['map', 2],
   ['filter', 2],
   ['fold', 3],
+  ['partial', 2],
+  ['compose', 2],
+  ['pipe', 2],
 ]);
 
 export function run(source: string, io: IO): void {
@@ -195,7 +200,12 @@ export class Session {
       if (word.kind === 'funcCall' || word.kind === 'varCall') {
         cur.i++;
         const fn = this.callee(node, env, scope);
-        return { kind: 'tail', fn, args: fn.params.map(() => this.expr(cur, env, scope, true)) };
+        return { kind: 'tail', fn, args: this.args(fn, cur, env, scope, true) };
+      }
+      if (word.kind === 'keyword' && word.keyword === 'pipe') {
+        cur.i++;
+        const value = this.expr(cur, env, scope, true);
+        return { kind: 'tail', fn: this.function(this.expr(cur, env, scope, true), 1, node), args: [value] };
       }
       if (word.kind === 'keyword' && COMPARISONS.has(word.keyword)) {
         cur.i++;
@@ -227,7 +237,7 @@ export class Session {
       case 'funcCall':
       case 'varCall': {
         const fn = this.callee(node, env, scope);
-        const args = fn.params.map(() => this.expr(cur, env, scope, live));
+        const args = this.args(fn, cur, env, scope, live);
         return live ? this.call(fn, args) : 0n;
       }
       case 'keyword': {
@@ -276,13 +286,22 @@ export class Session {
         const fn = this.function(args[0], 2, at);
         return this.items(args[2], at).reduce((acc, item) => this.call(fn, [acc, item]), args[1]);
       }
+      case 'partial': {
+        const fn = this.func(args[0], at);
+        if (this.arity(fn) === 0) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 1개 이상이어야 해`, at);
+        return this.partial(fn, args[1]);
+      }
+      case 'compose':
+        return { kind: 'composed', name: at.text, first: this.func(args[0], at), then: this.function(args[1], 1, at) };
+      case 'pipe':
+        return this.call(this.function(args[1], 1, at), [args[0]]);
       default:
         return this.arithmetic(keyword, args[0], args[1], at);
     }
   }
 
   private list(value: Value, at: Token): List {
-    if (typeof value === 'object' && value.kind !== 'closure') return value;
+    if (typeof value === 'object' && (value.kind === 'cons' || value.kind === 'empty')) return value;
     throw new UsagiError(`'${at.text}'에는 목록이 와야 하는데 ${this.kind(value)} 왔어`, at);
   }
 
@@ -310,18 +329,43 @@ export class Session {
     return list;
   }
 
-  private function(value: Value, arity: number, at: Token): Closure {
-    if (typeof value !== 'object' || value.kind !== 'closure') {
-      throw new UsagiError(`'${at.text}'에는 함수가 와야 하는데 ${this.kind(value)} 왔어`, at);
-    }
-    if (value.params.length !== arity) {
-      throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 ${arity}개여야 하는데 ${value.params.length}개야`, at);
-    }
-    return value;
+  private func(value: Value, at: Token): Func {
+    if (this.isFunc(value)) return value;
+    throw new UsagiError(`'${at.text}'에는 함수가 와야 하는데 ${this.kind(value)} 왔어`, at);
   }
 
-  private call(fn: Closure, args: Value[]): Value {
+  private function(value: Value, arity: number, at: Token): Func {
+    const fn = this.func(value, at);
+    const actual = this.arity(fn);
+    if (actual !== arity) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 ${arity}개여야 하는데 ${actual}개야`, at);
+    return fn;
+  }
+
+  private isFunc(value: Value): value is Func {
+    return typeof value === 'object' && (value.kind === 'closure' || value.kind === 'composed');
+  }
+
+  private arity(fn: Func): number {
+    return fn.kind === 'closure' ? fn.params.length : this.arity(fn.first);
+  }
+
+  private args(fn: Func, cur: Cursor, env: Env, scope: Scope, live: boolean): Value[] {
+    return Array.from({ length: this.arity(fn) }, () => this.expr(cur, env, scope, live));
+  }
+
+  private partial(fn: Func, value: Value): Func {
+    if (fn.kind === 'composed') return { ...fn, first: this.partial(fn.first, value) };
+    const [slot, ...rest] = fn.params;
+    return { ...fn, params: rest, env: { slot, value, next: fn.env } };
+  }
+
+  private call(fn: Func, args: Value[]): Value {
     for (;;) {
+      if (fn.kind === 'composed') {
+        args = [this.call(fn.first, args)];
+        fn = fn.then;
+        continue;
+      }
       let env = fn.env;
       fn.params.forEach((slot, k) => {
         env = { slot, value: args[k], next: env };
@@ -337,11 +381,11 @@ export class Session {
     return { kind: 'closure', name: this.words.lang.FunctionStart, params: node.params, body: node.body, env, scope };
   }
 
-  private callee(token: Token, env: Env, scope: Scope): Closure {
+  private callee(token: Token, env: Env, scope: Scope): Func {
     const word = token.word;
     if (word.kind === 'funcCall') return this.find(scope, word.index, token);
     const value = word.kind === 'varCall' ? this.lookup(env, word.slot) : undefined;
-    if (typeof value === 'object' && value.kind === 'closure') return value;
+    if (value !== undefined && this.isFunc(value)) return value;
     throw new UsagiError(`'${token.text}'... 함수가 아니라서 부를 수 없어`, token);
   }
 
@@ -390,7 +434,7 @@ export class Session {
 
   private kind(value: Value): string {
     if (typeof value === 'bigint') return '정수가';
-    return value.kind === 'closure' ? '함수가' : '목록이';
+    return this.isFunc(value) ? '함수가' : '목록이';
   }
 
   private arithmetic(op: Keyword, left: Value, right: Value, at: Token): bigint {
@@ -412,7 +456,7 @@ export class Session {
 
   private same(a: Value, b: Value): boolean {
     for (;;) {
-      if (typeof a === 'bigint' || typeof b === 'bigint' || a.kind === 'closure' || b.kind === 'closure') return a === b;
+      if (typeof a === 'bigint' || typeof b === 'bigint' || this.isFunc(a) || this.isFunc(b)) return a === b;
       if (a.kind === 'empty' || b.kind === 'empty') return a.kind === b.kind;
       if (!this.same(a.head, b.head)) return false;
       a = a.tail;
@@ -432,7 +476,7 @@ export class Session {
 
   private show(value: Value): string {
     if (typeof value === 'bigint') return value.toString();
-    if (value.kind === 'closure') return value.name;
+    if (this.isFunc(value)) return value.name;
     const parts: string[] = [];
     for (let list: List = value; list.kind === 'cons'; list = list.tail) parts.push(this.show(list.head));
     return `[${parts.join(', ')}]`;

@@ -31,6 +31,9 @@ export type Language = {
   Map: string;
   Filter: string;
   Fold: string;
+  Partial: string;
+  Compose: string;
+  Pipe: string;
 };
 
 export const LANGUAGE: Language = {
@@ -66,4 +69,7 @@ export const LANGUAGE: Language = {
   Map: '야앗',
   Filter: '야아앗',
   Fold: '야아아앗',
+  Partial: '후응',
+  Compose: '후으응',
+  Pipe: '후으으응',
 };
