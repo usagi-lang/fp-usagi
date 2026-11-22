@@ -1,6 +1,7 @@
 import { LANGUAGE } from '../../src/language.ts';
 import { Words } from '../../src/words.ts';
 import type { Keyword } from '../../src/words.ts';
+import type { Pos } from '../../src/error.ts';
 
 const words = new Words(LANGUAGE);
 
@@ -60,12 +61,16 @@ export const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g
 
 export const inline = (text: string) => escape(text).replace(/`([^`]+)`/g, (_, code: string) => `<code>${code}</code>`);
 
-export function highlight(source: string): string {
-  const lines = source.split('\n').map((line) => {
+export function highlight(source: string, mark: Pos | null = null): string {
+  const lines = source.split('\n').map((line, index) => {
     const hash = line.indexOf('#');
     const code = hash < 0 ? line : line.slice(0, hash);
     const comment = hash < 0 ? '' : `<span class="t-comment">${escape(line.slice(hash))}</span>`;
-    return code.replace(/\S+/g, (token) => `<span class="t-${tokenClass(token)}">${escape(token)}</span>`) + comment;
+    const marked = mark?.line === index + 1 ? mark.col - 1 : -1;
+    return code.replace(/\S+/g, (token, at: number) => {
+      const extra = at === marked ? ' t-error' : '';
+      return `<span class="t-${tokenClass(token)}${extra}">${escape(token)}</span>`;
+    }) + comment;
   });
   return lines.join('\n') + '\n';
 }

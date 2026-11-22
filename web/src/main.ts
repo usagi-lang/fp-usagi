@@ -5,6 +5,7 @@ import { EXAMPLES } from './examples.ts';
 import type { Example } from './examples.ts';
 import { escape, highlight, inline } from './highlight.ts';
 import { Runner } from './runner.ts';
+import type { Pos } from '../../src/error.ts';
 import { version } from '../../package.json';
 
 type State = 'idle' | 'busy' | 'ok' | 'error';
@@ -36,11 +37,35 @@ const runner = new Runner();
 const runKey = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘↵' : 'Ctrl ↵';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
+let mark: Pos | null = null;
+
 function render(): void {
-  painted.innerHTML = highlight(source.value);
+  painted.innerHTML = highlight(source.value, mark);
   const count = source.value.split('\n').length;
-  gutter.textContent = Array.from({ length: count }, (_, i) => String(i + 1)).join('\n');
+  gutter.innerHTML = Array.from({ length: count }, (_, i) => (i + 1 === mark?.line ? `<span class="mark">${i + 1}</span>` : String(i + 1))).join('\n');
   syncScroll();
+}
+
+function setMark(next: Pos | null): void {
+  if (mark === next) return;
+  mark = next;
+  render();
+}
+
+function goTo(pos: Pos): void {
+  const lines = source.value.split('\n');
+  const line = Math.min(pos.line, lines.length);
+  const text = lines[line - 1];
+  const col = Math.min(pos.col - 1, text.length);
+  const start = lines.slice(0, line - 1).reduce((sum, row) => sum + row.length + 1, 0) + col;
+  const token = text.slice(col).match(/^\S+/)?.[0] ?? '';
+  source.focus({ preventScroll: true });
+  source.setSelectionRange(start, start + token.length);
+  const height = parseFloat(getComputedStyle(source).lineHeight) || 24;
+  source.scrollTop = Math.max(0, (line - 1) * height - source.clientHeight / 3);
+  syncScroll();
+  updateCursor();
+  source.closest('.editor-pane')?.scrollIntoView({ block: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
 }
 
 function syncScroll(): void {
@@ -78,6 +103,7 @@ function load(text: string, name: string, input?: string): void {
   source.scrollTop = 0;
   source.scrollLeft = 0;
   source.setSelectionRange(0, 0);
+  mark = null;
   render();
   updateCursor();
   saveDraft();
@@ -108,13 +134,31 @@ function setRunning(running: boolean): void {
   runButton.querySelector('.label')!.textContent = running ? '중지' : '실행';
 }
 
-function append(text: string, kind: 'out' | 'error' | 'note'): void {
+function append(text: string, kind: 'out' | 'error' | 'note'): HTMLSpanElement {
   const previous = output.textContent ?? '';
   const span = document.createElement('span');
   span.className = kind;
   span.textContent = kind !== 'out' && previous && !previous.endsWith('\n') ? `\n${text}` : text;
   output.append(span);
   output.scrollTop = output.scrollHeight;
+  return span;
+}
+
+function fail(message: string, pos: Pos | undefined): void {
+  const box = append(message, 'error');
+  if (!pos) {
+    setStatus('하아? 오류가 났습니다', 'error');
+    return;
+  }
+  const jump = document.createElement('button');
+  jump.type = 'button';
+  jump.className = 'jump';
+  jump.textContent = '그 자리로 가기';
+  jump.addEventListener('click', () => goTo(pos));
+  box.append(jump);
+  output.scrollTop = output.scrollHeight;
+  setMark(pos);
+  setStatus(`하아? ${pos.line}줄 ${pos.col}칸에서 오류가 났습니다`, 'error');
 }
 
 const elapsed = (ms: number) => (ms < 1 ? '1ms 안에' : ms < 1000 ? `${Math.round(ms)}ms 만에` : `${(ms / 1000).toFixed(2)}초 만에`);
@@ -127,6 +171,7 @@ function run(): void {
     return;
   }
   output.replaceChildren();
+  setMark(null);
   setRunning(true);
   setStatus('실행 중…', 'busy');
   runner.run(source.value, stdin.value, {
@@ -136,10 +181,9 @@ function run(): void {
       if (!output.textContent) append('출력이 없습니다.', 'note');
       setStatus(`야하! ${elapsed(ms)} 끝났습니다`, 'ok');
     },
-    error: (message) => {
+    error: (message, _ms, pos) => {
       setRunning(false);
-      append(message, 'error');
-      setStatus('하아? 오류가 났습니다', 'error');
+      fail(message, pos);
     },
   });
 }
@@ -284,6 +328,7 @@ function start(): void {
   setupTour();
 
   source.addEventListener('input', () => {
+    mark = null;
     render();
     updateCursor();
     saveDraft();

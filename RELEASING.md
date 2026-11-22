@@ -59,6 +59,16 @@ git push origin main v0.3.0
 - `main`에 올라가면 [pages.yml](.github/workflows/pages.yml)이 플레이그라운드를 다시 배포합니다.
 - 태그가 올라가면 [release.yml](.github/workflows/release.yml)이 테스트를 돌리고, CHANGELOG의 해당 버전 내용으로 GitHub 릴리스를 만듭니다. 태그와 `package.json` 버전이 다르면 멈춥니다.
 
+## 미리보기 그림 바꾸기
+
+링크를 붙였을 때 뜨는 카드 그림은 [web/public/og.png](web/public/og.png)입니다. [scripts/og-card.html](scripts/og-card.html)을 고친 뒤 1200×630 크기로 찍어서 덮어씁니다. macOS의 Chrome이라면 아래 명령으로 찍을 수 있습니다.
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars --window-size=1200,630 --virtual-time-budget=8000 --screenshot="$PWD/web/public/og.png" "file://$PWD/scripts/og-card.html"
+```
+
+SNS는 카드 그림을 한동안 저장해 두므로, 바꾼 그림이 바로 보이지 않을 수 있습니다.
+
 ## 5. 내보낸 뒤
 
 - [플레이그라운드](https://usagi-lang.github.io/fp-usagi/) 아래쪽 버전이 바뀌었는지 봅니다.

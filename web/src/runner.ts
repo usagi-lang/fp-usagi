@@ -1,9 +1,10 @@
 import type { Reply, Request } from './worker.ts';
+import type { Pos } from '../../src/error.ts';
 
 export type Handlers = {
   out(text: string): void;
   done(ms: number): void;
-  error(message: string, ms: number): void;
+  error(message: string, ms: number, pos?: Pos): void;
 };
 
 export const TIME_LIMIT = 5000;
@@ -29,7 +30,7 @@ export class Runner {
       if (message.kind === 'out') return handlers.out(message.text);
       this.stop();
       if (message.kind === 'done') handlers.done(message.ms);
-      else handlers.error(message.message, message.ms);
+      else handlers.error(message.message, message.ms, message.pos);
     });
     worker.addEventListener('error', (event) => {
       this.stop();

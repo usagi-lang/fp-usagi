@@ -434,6 +434,19 @@ input {
 .t-ret { color: var(--t-ret); font-weight: 700; }
 .t-block { color: var(--t-block); font-weight: 700; }
 .t-comment { color: var(--t-comment); }
+.t-error {
+  border-radius: 0.2rem;
+  background: var(--error-soft);
+  text-decoration: underline wavy var(--error);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.gutter .mark {
+  color: var(--error);
+  font-weight: 700;
+}
+
 .t-bad {
   color: var(--t-bad);
   text-decoration: underline wavy;
@@ -480,6 +493,29 @@ input {
   border-radius: 0.4rem;
   background: var(--error-soft);
   color: var(--error);
+}
+
+.output .jump {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 600 0.8125rem/1.4 var(--font-ui);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.output .jump:hover {
+  text-decoration-thickness: 2px;
+}
+
+.output .jump:focus-visible {
+  outline: 2px solid var(--error);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
 }
 
 .output .note {

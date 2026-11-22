@@ -78,6 +78,7 @@ node src/cli.ts
 
 - 문법 색, 예제 불러오기, 입력(`야푸`), 사전, 숫자·글 인코더를 갖췄습니다.
 - `⌘↵`(Windows는 `Ctrl+↵`)로 실행합니다.
+- 오류가 나면 편집기에 틀린 말과 줄 번호를 표시하고, **그 자리로 가기**를 누르면 그곳으로 커서를 옮깁니다.
 - **공유**를 누르면 코드가 담긴 링크가 만들어집니다.
 - 프로그램은 별도 작업 스레드에서 돕니다. 5초가 지나거나 출력이 20만 글자를 넘으면 멈춥니다.
 
@@ -444,8 +445,9 @@ usagi-lang/
 │   └── cli.ts           ura 명령, 대화형 모드
 ├── web/
 │   ├── index.html       플레이그라운드 페이지
+│   ├── public/og.png    링크 미리보기 그림
 │   └── src/
-│       ├── main.ts      편집기 · 탭 · 공유 · 둘러보기
+│       ├── main.ts      편집기 · 오류 위치 · 탭 · 공유 · 둘러보기
 │       ├── worker.ts    작업 스레드에서 인터프리터 실행
 │       ├── runner.ts    작업 스레드 관리 (시간 제한)
 │       ├── highlight.ts 문법 색
@@ -453,7 +455,8 @@ usagi-lang/
 │       ├── docs.ts      둘러보기 · 사전 내용
 │       └── style.css    라이트 · 다크 테마
 ├── scripts/
-│   └── release-notes.ts CHANGELOG에서 릴리스 노트 뽑기
+│   ├── release-notes.ts CHANGELOG에서 릴리스 노트 뽑기
+│   └── og-card.html     링크 미리보기 그림의 원본
 ├── examples/            예제 12개
 ├── test/                언어 테스트, 문서·릴리스 점검
 ├── CHANGELOG.md         버전별 바뀐 점

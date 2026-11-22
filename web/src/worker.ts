@@ -1,11 +1,12 @@
 import { run } from '../../src/interpreter.ts';
 import { UsagiError } from '../../src/error.ts';
+import type { Pos } from '../../src/error.ts';
 
 export type Request = { source: string; input: string };
 export type Reply =
   | { kind: 'out'; text: string }
   | { kind: 'done'; ms: number }
-  | { kind: 'error'; message: string; ms: number };
+  | { kind: 'error'; message: string; ms: number; pos?: Pos };
 
 const OUTPUT_LIMIT = 200_000;
 
@@ -41,6 +42,7 @@ addEventListener('message', (event: MessageEvent<Request>) => {
       err instanceof UsagiError ? err.message
       : err instanceof OutputLimit ? `출력이 ${OUTPUT_LIMIT.toLocaleString('ko-KR')}글자를 넘어서 멈췄습니다.`
       : String(err);
-    reply({ kind: 'error', message, ms: performance.now() - started });
+    const pos = err instanceof UsagiError ? err.pos : undefined;
+    reply({ kind: 'error', message, ms: performance.now() - started, pos });
   }
 });

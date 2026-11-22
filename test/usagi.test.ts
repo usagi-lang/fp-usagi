@@ -305,6 +305,19 @@ describe('입출력과 읽기', () => {
 
 describe('오류', () => {
   test('모르는 말은 위치와 함께 알려준다', () => fails('\n  안녕', /\(2줄 3칸\) '안녕'... 우사기는 그런 말 안 해/));
+  test('오류에는 플레이그라운드가 표시할 위치가 담긴다', () => {
+    const position = (source: string) => {
+      try {
+        exec(source);
+      } catch (err) {
+        return (err as UsagiError).pos;
+      }
+      return undefined;
+    };
+    assert.deepEqual(position(lines('미이이야하 야하!', '미이이야하 푸릿 야하! 우이')), { line: 2, col: 7 });
+    assert.deepEqual(position(lines('미이이야하 야하!', '  하!')), { line: 2, col: 3 });
+    assert.deepEqual(position(lines('미야아아 우 야하!', '미이이야하 우-')), { line: 2, col: 7 });
+  });
   test('값만 덩그러니', () => fails('야하!', '덩그러니'));
   test('닫지 않은 블록', () => fails('하! 미이이야하 야하!', "'하?'(으)로 닫아야 하는데 코드가 끝났어"));
   test('연 적 없는 블록 끝', () => fails('하?', "연 적 없는 '하?'"));

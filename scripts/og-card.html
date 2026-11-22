@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>우사기랭 미리보기 카드</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gasoek+One&family=IBM+Plex+Sans+KR:wght@500;600&family=Nanum+Gothic+Coding:wght@400;700&display=block" />
+<style>
+  :root {
+    --bg: oklch(0.968 0.016 88);
+    --panel: oklch(0.988 0.009 90);
+    --line: oklch(0.875 0.024 84);
+    --ink: oklch(0.265 0.032 68);
+    --ink-2: oklch(0.45 0.032 70);
+    --ink-3: oklch(0.56 0.028 74);
+    --accent: oklch(0.87 0.152 92);
+    --accent-ink: oklch(0.29 0.062 78);
+    --t-num: oklch(0.55 0.15 58);
+    --t-var: oklch(0.46 0.13 258);
+    --t-fn: oklch(0.5 0.16 345);
+    --t-decl: oklch(0.48 0.17 27);
+    --t-op: oklch(0.49 0.12 152);
+    --t-io: oklch(0.5 0.11 118);
+    --t-bind: oklch(0.47 0.13 298);
+    --t-list: oklch(0.49 0.11 190);
+    --t-ret: oklch(0.38 0.07 62);
+    --t-block: oklch(0.52 0.05 72);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 72px 80px 64px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans KR', sans-serif;
+  }
+  .brand { display: flex; align-items: center; gap: 28px; }
+  .wordmark { font-family: 'Gasoek One', sans-serif; font-size: 112px; line-height: 1; letter-spacing: -0.01em; }
+  .bubble {
+    position: relative;
+    padding: 12px 26px 14px;
+    border-radius: 24px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 36px;
+    font-weight: 600;
+    transform: rotate(-4deg);
+  }
+  .bubble::before {
+    content: '';
+    position: absolute;
+    left: -14px;
+    bottom: 18px;
+    border: 15px solid transparent;
+    border-right-color: var(--accent);
+    border-left-width: 0;
+  }
+  .tagline { margin: 22px 0 0; color: var(--ink-2); font-size: 34px; font-weight: 500; }
+  pre {
+    margin: 0;
+    padding: 26px 32px;
+    border: 2px solid var(--line);
+    border-radius: 20px;
+    background: var(--panel);
+    font: 400 25px/1.6 'Nanum Gothic Coding', monospace;
+    white-space: pre;
+  }
+  .result { color: var(--ink-3); }
+  .t-num { color: var(--t-num); }
+  .t-var { color: var(--t-var); }
+  .t-fn { color: var(--t-fn); }
+  .t-decl { color: var(--t-decl); font-weight: 700; }
+  .t-op { color: var(--t-op); }
+  .t-io { color: var(--t-io); }
+  .t-bind { color: var(--t-bind); font-weight: 700; }
+  .t-list { color: var(--t-list); font-weight: 700; }
+  .t-ret { color: var(--t-ret); font-weight: 700; }
+  .t-block { color: var(--t-block); font-weight: 700; }
+  .foot { display: flex; justify-content: space-between; align-items: baseline; color: var(--ink-2); font-size: 26px; font-weight: 600; }
+  .foot b { color: var(--ink); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="wordmark">우사기랭</span>
+      <span class="bubble">우라-야하!</span>
+    </div>
+    <p class="tagline">우사기 말로 쓰는 함수형 프로그래밍 언어</p>
+  </header>
+  <pre><span class="t-bind">미야아아</span> <span class="t-var">우</span> <span class="t-list">유후후후후</span> <span class="t-num">야하!</span> <span class="t-num">야하!!!!!</span>
+<span class="t-io">미이이야하</span> <span class="t-list">야앗</span> <span class="t-decl">우라-야하!</span> <span class="t-var">우라</span> <span class="t-block">하!</span> <span class="t-ret">푸루야</span> <span class="t-op">푸리리릿</span> <span class="t-var">우라</span> <span class="t-var">우라</span> <span class="t-block">하?</span> <span class="t-var">우</span>
+<span class="result">→ [1, 4, 9, 16, 25]</span></pre>
+  <footer class="foot">
+    <span>브라우저에서 바로 실행해 보세요</span>
+    <b>usagi-lang.github.io/fp-usagi</b>
+  </footer>
+</body>
+</html>

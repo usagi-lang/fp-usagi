@@ -91,6 +91,24 @@ describe('문서', () => {
   });
 });
 
+describe('플레이그라운드 페이지', () => {
+  const page = read('web/index.html');
+  const meta = (property: string) => page.match(new RegExp(`<meta (?:property|name)="${property}" content="([^"]+)"`))?.[1];
+
+  test('링크 미리보기 카드 정보가 있다', () => {
+    for (const property of ['og:title', 'og:description', 'og:url', 'og:image', 'twitter:card']) assert.ok(meta(property), property);
+  });
+
+  test('미리보기 그림 파일이 배포 폴더에 있다', () => {
+    const image = new URL(meta('og:image')!);
+    const base = new URL(meta('og:url')!);
+    assert.ok(image.href.startsWith(base.href), image.href);
+    const file = image.href.slice(base.href.length);
+    assert.ok(readdirSync(new URL('../web/public/', import.meta.url)).includes(file), file);
+    assert.equal(pkg.homepage, base.href);
+  });
+});
+
 describe('예제 목록', () => {
   test('모든 예제가 오류 없이 끝난다', () => {
     for (const name of examples) assert.doesNotThrow(() => output(read(`examples/${name}`)), name);

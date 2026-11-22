@@ -6,6 +6,16 @@
 
 ## 다음 버전
 
+## [0.4.1] - 2026-11-22
+
+플레이그라운드만 바뀌었고, 언어는 그대로입니다.
+
+### 더한 것
+
+- **오류 자리 표시.** 오류가 나면 편집기에서 틀린 말에 물결 밑줄을 긋고 줄 번호를 빨갛게 표시합니다. 출력 창의 **그 자리로 가기**를 누르면 그 말을 골라 커서를 옮깁니다. 코드를 고치면 표시는 사라집니다.
+- 아래쪽 상태 줄에 오류가 난 줄과 칸을 보여 줍니다.
+- **링크 미리보기 카드.** 플레이그라운드 링크를 SNS나 메신저에 붙이면 우사기랭 카드가 뜹니다. 그림 원본은 [scripts/og-card.html](scripts/og-card.html)이고, 다시 만드는 방법은 [RELEASING.md](RELEASING.md)에 있습니다.
+
 ## [0.4.0] - 2026-11-20
 
 이미 있는 함수로 새 함수를 만드는 **부분 적용**, **합성**, **파이프**가 생겼습니다.
@@ -100,6 +110,7 @@
 - 꼬리 호출 최적화, 크기 제한 없는 정수
 - `ura` 명령(파일 실행, 대화형 모드, 숫자·글 인코더)과 웹 플레이그라운드
 
+[0.4.1]: https://github.com/usagi-lang/fp-usagi/releases/tag/v0.4.1
 [0.4.0]: https://github.com/usagi-lang/fp-usagi/releases/tag/v0.4.0
 [0.3.0]: https://github.com/usagi-lang/fp-usagi/releases/tag/v0.3.0
 [0.2.0]: https://github.com/usagi-lang/fp-usagi/releases/tag/v0.2.0
