@@ -6,7 +6,7 @@ export type Keyword =
   | 'add' | 'subtract' | 'multiply' | 'divide' | 'remainder'
   | 'return' | 'blockStart' | 'blockEnd' | 'functionStart' | 'assignment'
   | 'empty' | 'cons' | 'head' | 'tail' | 'range' | 'map' | 'filter' | 'fold'
-  | 'partial' | 'compose' | 'pipe';
+  | 'partial' | 'compose' | 'pipe' | 'reference';
 
 export type Word =
   | { kind: 'keyword'; keyword: Keyword }
@@ -48,6 +48,7 @@ const KEYWORDS: [keyof Language, Keyword][] = [
   ['Partial', 'partial'],
   ['Compose', 'compose'],
   ['Pipe', 'pipe'],
+  ['Reference', 'reference'],
 ];
 
 const VARIABLE_LETTERS = new Set(['우', '라', '아']);

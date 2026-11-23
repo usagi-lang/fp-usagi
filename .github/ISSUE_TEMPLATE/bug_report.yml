@@ -57,7 +57,7 @@ body:
     attributes:
       label: 환경
       description: 플레이그라운드라면 브라우저와 운영체제, 화면 맨 아래의 우사기랭 버전을 적어 주세요. ura 명령이라면 `ura --version`과 `node --version` 결과를 적어 주세요.
-      placeholder: 우사기랭 0.4.1 / Chrome 140 / macOS 26, 또는 우사기랭 0.4.1 / Node 24.22.1
+      placeholder: 우사기랭 0.5.0 / Chrome 140 / macOS 26, 또는 우사기랭 0.5.0 / Node 24.22.1
 
   - type: textarea
     id: more

@@ -11,6 +11,7 @@ const LIST: Omit<Example, 'source'>[] = [
   { id: 'gcd', title: '최대공약수 (조건식)', input: '' },
   { id: 'list', title: '목록과 map · filter · fold', input: '' },
   { id: 'primes', title: '소수 거르기', input: '' },
+  { id: 'sort', title: '삽입 정렬 (나눠 묶기)', input: '' },
   { id: 'closure-list', title: '함수로 만든 목록', input: '' },
   { id: 'fizzbuzz', title: '피즈버즈', input: '' },
   { id: 'reverse', title: '거꾸로 (입력 사용)', input: '우사기랭!\n' },

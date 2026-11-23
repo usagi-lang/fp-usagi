@@ -15,7 +15,8 @@ type Env = { slot: number; value: Value; next: Env } | null;
 type Scope = { table: Map<number, Closure>; parent: Scope | null };
 export type Closure = { kind: 'closure'; name: string; params: number[]; body: Node[]; env: Env; scope: Scope };
 export type Composed = { kind: 'composed'; name: string; first: Func; then: Func };
-export type Func = Closure | Composed;
+export type Builtin = { kind: 'builtin'; name: string; ops: Keyword[]; arity: number; bound: Value[]; at: Token };
+export type Func = Closure | Composed | Builtin;
 export type List = { kind: 'cons'; head: Value; tail: List } | { kind: 'empty' };
 export type Value = bigint | Func | List;
 
@@ -25,6 +26,7 @@ type Outcome =
   | { kind: 'tail'; fn: Func; args: Value[] };
 
 type Cursor = { nodes: Node[]; i: number };
+type Pattern = number | { head: Pattern; tail: Pattern; at: Token };
 
 const EMPTY: List = { kind: 'empty' };
 const COMPARISONS = new Set<Keyword>(['equal', 'less', 'greater']);
@@ -118,8 +120,8 @@ export class Session {
       } else if (keyword === 'return') {
         return this.returns(node, cur) ? this.tail(cur, env, scope) : { kind: 'return', value: 0n };
       } else if (keyword === 'assignment') {
-        const slot = this.target(cur, node);
-        env = { slot, value: this.expr(cur, env, scope, true), next: env };
+        const pattern = this.pattern(cur, node);
+        env = this.bind(pattern, this.expr(cur, env, scope, true), env);
       } else if (COMPARISONS.has(keyword)) {
         const outcome = this.condition(node, cur, env, scope);
         if (outcome) return outcome;
@@ -174,7 +176,7 @@ export class Session {
     } else if (keyword === 'return') {
       if (this.returns(node, cur)) this.expr(cur, env, scope, false);
     } else if (keyword === 'assignment') {
-      this.target(cur, node);
+      this.pattern(cur, node);
       this.expr(cur, env, scope, false);
     } else if (COMPARISONS.has(keyword)) {
       this.test(node, cur, env, scope, false);
@@ -241,6 +243,10 @@ export class Session {
         return live ? this.call(fn, args) : 0n;
       }
       case 'keyword': {
+        if (word.keyword === 'reference') {
+          const fn = this.reference(node, cur);
+          return live ? fn : 0n;
+        }
         if (COMPARISONS.has(word.keyword)) return this.choose(node, cur, env, scope, live);
         const arity = OPERATORS.get(word.keyword);
         if (arity === undefined) break;
@@ -251,6 +257,33 @@ export class Session {
     }
     if (word.kind === 'unknown') throw new UsagiError(`'${node.text}'... 우사기는 그런 말 안 해`, node);
     throw new UsagiError(`'${node.text}'... 여기엔 값이 와야 해`, node);
+  }
+
+  private reference(at: Token, cur: Cursor): Builtin {
+    const node = cur.nodes[cur.i];
+    const word = node?.kind === 'token' ? node.word : null;
+    if (node?.kind === 'token' && this.isComparison(node)) {
+      const ops: Keyword[] = [];
+      const names: string[] = [];
+      for (let next = cur.nodes[cur.i]; next?.kind === 'token' && this.isComparison(next); next = cur.nodes[++cur.i]) {
+        ops.push((next.word as { keyword: Keyword }).keyword);
+        names.push(next.text);
+      }
+      return { kind: 'builtin', name: names.join(' '), ops, arity: 2, bound: [], at: node };
+    }
+    const arity = word?.kind === 'keyword' ? OPERATORS.get(word.keyword) : undefined;
+    if (node?.kind !== 'token' || word?.kind !== 'keyword' || !arity) {
+      const hint = word?.kind === 'number' ? `. 음수라면 '${at.text}${(node as Token).text}'처럼 붙여 써` : '';
+      throw new UsagiError(`'${at.text}' 다음엔 값을 받는 우사기 말이 와야 해${hint}`, node ?? at);
+    }
+    cur.i++;
+    return { kind: 'builtin', name: node.text, ops: [word.keyword], arity, bound: [], at: node };
+  }
+
+  private apply(fn: Builtin, args: Value[]): Value {
+    const values = [...fn.bound, ...args];
+    if (COMPARISONS.has(fn.ops[0])) return fn.ops.some((op) => this.compare(op, values[0], values[1], fn.at)) ? 1n : 0n;
+    return this.operate(fn.ops[0], values, fn.at);
   }
 
   private choose(first: Token, cur: Cursor, env: Env, scope: Scope, live: boolean): Value {
@@ -342,11 +375,12 @@ export class Session {
   }
 
   private isFunc(value: Value): value is Func {
-    return typeof value === 'object' && (value.kind === 'closure' || value.kind === 'composed');
+    return typeof value === 'object' && (value.kind === 'closure' || value.kind === 'composed' || value.kind === 'builtin');
   }
 
   private arity(fn: Func): number {
-    return fn.kind === 'closure' ? fn.params.length : this.arity(fn.first);
+    if (fn.kind === 'composed') return this.arity(fn.first);
+    return fn.kind === 'closure' ? fn.params.length : fn.arity;
   }
 
   private args(fn: Func, cur: Cursor, env: Env, scope: Scope, live: boolean): Value[] {
@@ -355,12 +389,14 @@ export class Session {
 
   private partial(fn: Func, value: Value): Func {
     if (fn.kind === 'composed') return { ...fn, first: this.partial(fn.first, value) };
+    if (fn.kind === 'builtin') return { ...fn, arity: fn.arity - 1, bound: [...fn.bound, value] };
     const [slot, ...rest] = fn.params;
     return { ...fn, params: rest, env: { slot, value, next: fn.env } };
   }
 
   private call(fn: Func, args: Value[]): Value {
     for (;;) {
+      if (fn.kind === 'builtin') return this.apply(fn, args);
       if (fn.kind === 'composed') {
         args = [this.call(fn.first, args)];
         fn = fn.then;
@@ -402,12 +438,24 @@ export class Session {
     return undefined;
   }
 
-  private target(cur: Cursor, at: Token): number {
+  private pattern(cur: Cursor, at: Token, slots: number[] = []): Pattern {
     const node = cur.nodes[cur.i++];
-    if (node?.kind !== 'token' || node.word.kind !== 'variable') {
-      throw new UsagiError(`'${at.text}' 다음엔 변수가 와야 해`, node ?? at);
+    if (node?.kind === 'token' && node.word.kind === 'keyword' && node.word.keyword === 'cons') {
+      return { head: this.pattern(cur, node, slots), tail: this.pattern(cur, node, slots), at: node };
     }
+    if (node?.kind !== 'token' || node.word.kind !== 'variable') {
+      throw new UsagiError(`'${at.text}' 다음엔 변수나 '${this.words.lang.Cons}'가 와야 해`, node ?? at);
+    }
+    if (slots.includes(node.word.slot)) throw new UsagiError(`'${node.text}'와 글자 수가 같은 변수가 이미 있어`, node);
+    slots.push(node.word.slot);
     return node.word.slot;
+  }
+
+  private bind(pattern: Pattern, value: Value, env: Env): Env {
+    if (typeof pattern === 'number') return { slot: pattern, value, next: env };
+    const list = this.list(value, pattern.at);
+    if (list.kind === 'empty') throw new UsagiError(`'${pattern.at.text}'... 빈 목록은 나눠 묶을 수 없어`, pattern.at);
+    return this.bind(pattern.tail, list.tail, this.bind(pattern.head, list.head, env));
   }
 
   private startsExpr(node: Node | undefined): boolean {
@@ -415,7 +463,7 @@ export class Session {
     if (node.kind === 'lambda') return true;
     if (node.kind !== 'token') return false;
     const word = node.word;
-    if (word.kind === 'keyword') return OPERATORS.has(word.keyword) || COMPARISONS.has(word.keyword);
+    if (word.kind === 'keyword') return OPERATORS.has(word.keyword) || COMPARISONS.has(word.keyword) || word.keyword === 'reference';
     return word.kind !== 'unknown' && word.kind !== 'funcDecl' && word.kind !== 'funcEnd';
   }
 
@@ -456,7 +504,12 @@ export class Session {
 
   private same(a: Value, b: Value): boolean {
     for (;;) {
-      if (typeof a === 'bigint' || typeof b === 'bigint' || this.isFunc(a) || this.isFunc(b)) return a === b;
+      if (typeof a === 'bigint' || typeof b === 'bigint') return a === b;
+      if (a.kind === 'builtin' && b.kind === 'builtin') {
+        const { bound } = b;
+        return a.name === b.name && a.bound.length === bound.length && a.bound.every((value, k) => this.same(value, bound[k]));
+      }
+      if (this.isFunc(a) || this.isFunc(b)) return a === b;
       if (a.kind === 'empty' || b.kind === 'empty') return a.kind === b.kind;
       if (!this.same(a.head, b.head)) return false;
       a = a.tail;

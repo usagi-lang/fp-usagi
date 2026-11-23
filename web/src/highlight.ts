@@ -34,6 +34,7 @@ const KEYWORD_CLASS: Record<Keyword, string> = {
   partial: 'fn',
   compose: 'fn',
   pipe: 'fn',
+  reference: 'fn',
 };
 
 export function tokenClass(text: string): string {
@@ -59,7 +60,10 @@ export function tokenClass(text: string): string {
 
 export const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-export const inline = (text: string) => escape(text).replace(/`([^`]+)`/g, (_, code: string) => `<code>${code}</code>`);
+export const inline = (text: string) =>
+  escape(text)
+    .replace(/`([^`]+)`/g, (_, code: string) => `<code>${code}</code>`)
+    .replace(/\*\*([^*]+)\*\*/g, (_, bold: string) => `<strong>${bold}</strong>`);
 
 export function highlight(source: string, mark: Pos | null = null): string {
   const lines = source.split('\n').map((line, index) => {

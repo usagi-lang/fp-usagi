@@ -34,6 +34,7 @@ export type Language = {
   Partial: string;
   Compose: string;
   Pipe: string;
+  Reference: string;
 };
 
 export const LANGUAGE: Language = {
@@ -72,4 +73,5 @@ export const LANGUAGE: Language = {
   Partial: '후응',
   Compose: '후으응',
   Pipe: '후으으응',
+  Reference: '이',
 };
