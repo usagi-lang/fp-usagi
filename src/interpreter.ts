@@ -29,6 +29,7 @@ type Cursor = { nodes: Node[]; i: number };
 type Pattern = number | { head: Pattern; tail: Pattern; at: Token };
 
 const EMPTY: List = { kind: 'empty' };
+const CALLERS = new Set<Keyword>(['map', 'filter', 'fold', 'pipe']);
 const COMPARISONS = new Set<Keyword>(['equal', 'less', 'greater']);
 const PRINTS = new Set<Keyword>(['print', 'charPrint', 'textPrint']);
 const OPERATORS = new Map<Keyword, number>([
@@ -50,6 +51,9 @@ const OPERATORS = new Map<Keyword, number>([
   ['compose', 2],
   ['pipe', 2],
 ]);
+
+const overflowed = (err: unknown) =>
+  (err instanceof RangeError && err.message.includes('call stack')) || (err instanceof Error && err.name === 'InternalError');
 
 export function run(source: string, io: IO): void {
   new Session(io).run(source);
@@ -74,8 +78,7 @@ export class Session {
       if (outcome.kind === 'done') this.env = outcome.env;
       if (outcome.kind === 'tail') this.call(outcome.fn, outcome.args);
     } catch (err) {
-      if (err instanceof RangeError) throw new UsagiError('너무 깊이 들어갔어 (재귀가 너무 깊어)');
-      throw err;
+      throw overflowed(err) ? new UsagiError(this.tooDeep()) : err;
     }
   }
 
@@ -240,7 +243,12 @@ export class Session {
       case 'varCall': {
         const fn = this.callee(node, env, scope);
         const args = this.args(fn, cur, env, scope, live);
-        return live ? this.call(fn, args) : 0n;
+        if (!live) return 0n;
+        try {
+          return this.call(fn, args);
+        } catch (err) {
+          throw this.deep(err, node);
+        }
       }
       case 'keyword': {
         if (word.keyword === 'reference') {
@@ -252,7 +260,13 @@ export class Session {
         if (arity === undefined) break;
         const args: Value[] = [];
         for (let k = 0; k < arity; k++) args.push(this.expr(cur, env, scope, live));
-        return live ? this.operate(word.keyword, args, node) : 0n;
+        if (!live) return 0n;
+        if (!CALLERS.has(word.keyword)) return this.operate(word.keyword, args, node);
+        try {
+          return this.operate(word.keyword, args, node);
+        } catch (err) {
+          throw this.deep(err, node);
+        }
       }
     }
     if (word.kind === 'unknown') throw new UsagiError(`'${node.text}'... 우사기는 그런 말 안 해`, node);
@@ -488,9 +502,14 @@ export class Session {
   private arithmetic(op: Keyword, left: Value, right: Value, at: Token): bigint {
     const a = this.integer(left, at);
     const b = this.integer(right, at);
-    if (op === 'add') return a + b;
-    if (op === 'subtract') return a - b;
-    if (op === 'multiply') return a * b;
+    try {
+      if (op === 'add') return a + b;
+      if (op === 'subtract') return a - b;
+      if (op === 'multiply') return a * b;
+    } catch (err) {
+      if (err instanceof RangeError && !overflowed(err)) throw new UsagiError('수가 너무 커졌어', at);
+      throw err;
+    }
     if (b === 0n) throw new UsagiError('0으로는 나눌 수 없어', at);
     return op === 'divide' ? a / b : a % b;
   }
@@ -533,6 +552,18 @@ export class Session {
     const parts: string[] = [];
     for (let list: List = value; list.kind === 'cons'; list = list.tail) parts.push(this.show(list.head));
     return `[${parts.join(', ')}]`;
+  }
+
+  private tooDeep(): string {
+    return `너무 깊이 들어갔어. '${this.words.lang.Return}' 바로 뒤에서 부르는 꼬리 호출로 바꾸면 깊이 제한이 없어`;
+  }
+
+  private deep(err: unknown, at: Token): unknown {
+    try {
+      return overflowed(err) ? new UsagiError(this.tooDeep(), at) : err;
+    } catch {
+      return err;
+    }
   }
 
   private misplaced(token: Token): UsagiError {

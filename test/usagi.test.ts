@@ -460,9 +460,16 @@ describe('오류', () => {
     fails(lines('우라-야하! 하아! 우 우라', '하아?', '미이이야하 후으응 하아 하아'), "'후으응'에 넘긴 함수는 매개변수가 1개여야 하는데 2개야");
     fails('미이이야하 후으으응 야하! 우이', "'후으으응'에는 함수가 와야 하는데 목록이 왔어");
   });
-  test('꼬리가 아닌 깊은 재귀', () => {
+  test('꼬리가 아닌 깊은 재귀는 너무 깊이 들어간 호출을 가리킨다', () => {
     const source = lines('우라-야하! 하아! 우', '푸루 우 야하 푸루야 야하', '푸루야 푸릿 야하! 하아- 푸리릿 우 야하!', '하아?', `미이이야하 하아- ${encodeNumber(1000000n)}`);
-    fails(source, '너무 깊이');
+    assert.throws(
+      () => exec(source),
+      (err: unknown) => err instanceof UsagiError && err.message.includes('너무 깊이') && err.message.includes('꼬리 호출') && err.pos?.line === 3 && err.pos.col === 12,
+    );
+  });
+  test('목록 함수 안의 깊은 재귀도 자리를 가리킨다', () => {
+    const source = lines('우라-야하! 하아! 우', '푸루야 푸릿 야하! 유후후 야앗 하아 유후 우 우이', '하아?', '미이이야하 하아- 야하!');
+    assert.throws(() => exec(source), (err: unknown) => err instanceof UsagiError && err.message.includes('너무 깊이') && err.pos !== undefined);
   });
 });
 

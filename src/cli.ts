@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync, readSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { createInterface } from 'node:readline';
-import { Session } from './interpreter.ts';
+import { Worker } from 'node:worker_threads';
 import { encodeNumber, encodeText } from './encode.ts';
 import { UsagiError } from './error.ts';
+import type { Job, Options, Reply } from './thread.ts';
 import pkg from '../package.json' with { type: 'json' };
+
+const STACK_MB = 256;
 
 const USAGE = `우사기랭 ${pkg.version} — 우라-야하!
 
@@ -15,29 +18,6 @@ const USAGE = `우사기랭 ${pkg.version} — 우라-야하!
   ura num <정수>     정수를 우사기 말로 바꿔줌
   ura encode [글]    글을 출력하는 프로그램을 만들어줌 (글이 없으면 표준 입력을 읽음)
   ura --version      버전 보기`;
-
-function stdinReader(): () => number {
-  const decoder = new TextDecoder();
-  const buffer = Buffer.alloc(4096);
-  const pending: number[] = [];
-  let eof = false;
-  return () => {
-    while (pending.length === 0 && !eof) {
-      let bytes = 0;
-      try {
-        bytes = readSync(0, buffer, 0, buffer.length, null);
-      } catch (err) {
-        const code = (err as { code?: string }).code;
-        if (code === 'EAGAIN') continue;
-        if (code !== 'EOF') throw err;
-      }
-      if (bytes === 0) eof = true;
-      const text = eof ? decoder.decode() : decoder.decode(buffer.subarray(0, bytes), { stream: true });
-      for (const ch of text) pending.push(ch.codePointAt(0)!);
-    }
-    return pending.shift() ?? -1;
-  };
-}
 
 function report(err: unknown): void {
   if (err instanceof UsagiError) {
@@ -52,31 +32,85 @@ function report(err: unknown): void {
   throw err;
 }
 
-function repl(): void {
-  const session = new Session({ write: (text) => process.stdout.write(text), read: () => -1 });
-  console.log(`우사기랭 ${pkg.version} (.yaha)\n코드를 쓰고 빈 줄을 넣으면 실행돼. :exit 로 끝내.\n`);
-  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '>>> ' });
-  let source = '';
-  rl.prompt();
-  rl.on('line', (line) => {
-    if (line === ':exit') {
-      rl.close();
+function thread(interactive: boolean): Worker {
+  const worker = new Worker(new URL('./thread.ts', import.meta.url), {
+    workerData: { interactive, tty: Boolean(process.stdout.isTTY) } satisfies Options,
+    resourceLimits: { stackSizeMb: STACK_MB },
+  });
+  worker.on('error', (err) => {
+    throw err;
+  });
+  return worker;
+}
+
+function execute(source: string): void {
+  const worker = thread(false);
+  worker.on('message', (reply: Reply) => {
+    if (reply.kind === 'out') {
+      process.stdout.write(reply.text);
       return;
     }
-    if (line !== '') {
-      source += line + '\n';
-      rl.setPrompt('... ');
-    } else if (source) {
-      try {
-        session.run(source);
-      } catch (err) {
-        report(err);
-      }
-      source = '';
-      rl.setPrompt('>>> ');
+    if (reply.kind === 'error') {
+      console.error(reply.message);
+      process.exitCode = 1;
     }
-    rl.prompt();
+    void worker.terminate();
   });
+  worker.postMessage({ source } satisfies Job);
+}
+
+function repl(): void {
+  const worker = thread(true);
+  console.log(`우사기랭 ${pkg.version} (.yaha)\n코드를 쓰고 빈 줄을 넣으면 실행돼. :exit 로 끝내.\n`);
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '>>> ' });
+  const queue: string[] = [];
+  let source = '';
+  let busy = false;
+  let closed = false;
+  const prompt = () => {
+    if (!closed) rl.prompt();
+  };
+  const next = () => {
+    while (!busy && queue.length) {
+      const line = queue.shift()!;
+      if (line === ':exit') {
+        queue.length = 0;
+        rl.close();
+        break;
+      }
+      if (line !== '') {
+        source += line + '\n';
+        rl.setPrompt('... ');
+      } else if (source) {
+        busy = true;
+        worker.postMessage({ source } satisfies Job);
+        source = '';
+        rl.setPrompt('>>> ');
+        return;
+      }
+      prompt();
+    }
+    if (closed && !busy) void worker.terminate();
+  };
+  worker.on('message', (reply: Reply) => {
+    if (reply.kind === 'out') {
+      process.stdout.write(reply.text);
+      return;
+    }
+    if (reply.kind === 'error') console.error(reply.message);
+    busy = false;
+    prompt();
+    next();
+  });
+  rl.on('line', (line) => {
+    queue.push(line);
+    next();
+  });
+  rl.on('close', () => {
+    closed = true;
+    next();
+  });
+  rl.prompt();
 }
 
 function main(args: string[]): number | undefined {
@@ -105,8 +139,8 @@ function main(args: string[]): number | undefined {
     }
     if (more.length) throw new UsagiError(`'${more[0]}'... 이런 인자는 몰라`);
     if (extname(command) !== '.yaha') console.error('하아? .yaha 파일이 아니지만 일단 돌려볼게');
-    new Session({ write: (text) => process.stdout.write(text), read: stdinReader() }).run(readFileSync(command, 'utf8'));
-    return 0;
+    execute(readFileSync(command, 'utf8'));
+    return undefined;
   } catch (err) {
     report(err);
     return 1;

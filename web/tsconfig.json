@@ -7,5 +7,5 @@
     "types": ["vite/client"]
   },
   "include": ["src", "../src"],
-  "exclude": ["../src/cli.ts"]
+  "exclude": ["../src/cli.ts", "../src/thread.ts"]
 }
