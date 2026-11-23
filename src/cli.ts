@@ -50,6 +50,10 @@ function execute(source: string): void {
       process.stdout.write(reply.text);
       return;
     }
+    if (reply.kind === 'warn') {
+      console.error(reply.message);
+      return;
+    }
     if (reply.kind === 'error') {
       console.error(reply.message);
       process.exitCode = 1;
@@ -95,6 +99,10 @@ function repl(): void {
   worker.on('message', (reply: Reply) => {
     if (reply.kind === 'out') {
       process.stdout.write(reply.text);
+      return;
+    }
+    if (reply.kind === 'warn') {
+      console.error(reply.message);
       return;
     }
     if (reply.kind === 'error') console.error(reply.message);

@@ -5,6 +5,7 @@ import type { Pos } from '../../src/error.ts';
 export type Request = { source: string; input: string };
 export type Reply =
   | { kind: 'out'; text: string }
+  | { kind: 'warn'; message: string; pos: Pos }
   | { kind: 'done'; ms: number }
   | { kind: 'error'; message: string; ms: number; pos?: Pos };
 
@@ -33,6 +34,10 @@ addEventListener('message', (event: MessageEvent<Request>) => {
         if (pending.length > 2048) flush();
       },
       read: () => chars.shift() ?? -1,
+      warn: ({ message, pos }) => {
+        flush();
+        reply({ kind: 'warn', message, pos });
+      },
     });
     flush();
     reply({ kind: 'done', ms: performance.now() - started });

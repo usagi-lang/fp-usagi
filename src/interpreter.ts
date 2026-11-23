@@ -4,11 +4,13 @@ import type { Keyword } from './words.ts';
 import { parse } from './parser.ts';
 import type { Lambda, Node } from './parser.ts';
 import type { Token } from './lexer.ts';
-import { UsagiError } from './error.ts';
+import { UsagiError, warning } from './error.ts';
+import type { Warning } from './error.ts';
 
 export type IO = {
   write(text: string): void;
   read(): number;
+  warn?(warning: Warning): void;
 };
 
 type Env = { slot: number; value: Value; next: Env } | null;
@@ -64,6 +66,7 @@ export class Session {
   private words = new Words(LANGUAGE);
   private env: Env = null;
   private scope: Scope | null = null;
+  private warned = new Set<Token>();
 
   constructor(io: IO) {
     this.io = io;
@@ -99,7 +102,10 @@ export class Session {
   private sequence(cur: Cursor, env: Env, scope: Scope): Outcome {
     while (cur.i < cur.nodes.length) {
       const node = cur.nodes[cur.i++];
-      if (node.kind === 'func') continue;
+      if (node.kind === 'func') {
+        scope.table.get(node.index)!.env = env;
+        continue;
+      }
       if (node.kind === 'block') {
         const outcome = this.block(node.body, env, scope);
         if (outcome.kind !== 'done') return outcome;
@@ -205,7 +211,7 @@ export class Session {
       if (word.kind === 'funcCall' || word.kind === 'varCall') {
         cur.i++;
         const fn = this.callee(node, env, scope);
-        return { kind: 'tail', fn, args: this.args(fn, cur, env, scope, true) };
+        return { kind: 'tail', fn, args: this.args(fn, node, cur, env, scope, true) };
       }
       if (word.kind === 'keyword' && word.keyword === 'pipe') {
         cur.i++;
@@ -235,14 +241,18 @@ export class Session {
     switch (word.kind) {
       case 'number':
         return word.value;
-      case 'variable':
-        return live ? (this.lookup(env, word.slot) ?? 0n) : 0n;
+      case 'variable': {
+        if (!live) return 0n;
+        const value = this.lookup(env, word.slot);
+        if (value === undefined) throw this.unbound(node, word.slot);
+        return value;
+      }
       case 'funcRef':
         return live ? this.find(scope, word.index, node) : 0n;
       case 'funcCall':
       case 'varCall': {
         const fn = this.callee(node, env, scope);
-        const args = this.args(fn, cur, env, scope, live);
+        const args = this.args(fn, node, cur, env, scope, live);
         if (!live) return 0n;
         try {
           return this.call(fn, args);
@@ -397,8 +407,27 @@ export class Session {
     return fn.kind === 'closure' ? fn.params.length : fn.arity;
   }
 
-  private args(fn: Func, cur: Cursor, env: Env, scope: Scope, live: boolean): Value[] {
-    return Array.from({ length: this.arity(fn) }, () => this.expr(cur, env, scope, live));
+  private args(fn: Func, at: Token, cur: Cursor, env: Env, scope: Scope, live: boolean): Value[] {
+    const arity = this.arity(fn);
+    const values: Value[] = [];
+    while (values.length < arity) {
+      const next = cur.nodes[cur.i];
+      if (this.ends(next)) throw new UsagiError(`'${at.text}'에 넘길 값이 모자라. 매개변수는 ${arity}개인데 ${values.length}개만 있어`, at);
+      this.reaches(at, next);
+      values.push(this.expr(cur, env, scope, live));
+    }
+    return values;
+  }
+
+  private ends(node: Node | undefined): boolean {
+    return !node || (node.kind === 'token' && node.word.kind === 'keyword' && !this.startsExpr(node));
+  }
+
+  private reaches(at: Token, next: Node | undefined): void {
+    if (next?.kind !== 'token' || next.line === at.line || next.col !== next.indent || next.indent > at.indent) return;
+    if (this.warned.has(at)) return;
+    this.warned.add(at);
+    this.io.warn?.(warning(`'${at.text}'가 ${next.line}줄의 '${next.text}'까지 인자로 가져갔어. 인자를 빠뜨린 게 아니라면 ${next.line}줄을 더 들여 써`, at));
   }
 
   private partial(fn: Func, value: Value): Func {
@@ -435,6 +464,7 @@ export class Session {
     const word = token.word;
     if (word.kind === 'funcCall') return this.find(scope, word.index, token);
     const value = word.kind === 'varCall' ? this.lookup(env, word.slot) : undefined;
+    if (word.kind === 'varCall' && value === undefined) throw this.unbound(token, word.slot);
     if (value !== undefined && this.isFunc(value)) return value;
     throw new UsagiError(`'${token.text}'... 함수가 아니라서 부를 수 없어`, token);
   }
@@ -552,6 +582,10 @@ export class Session {
     const parts: string[] = [];
     for (let list: List = value; list.kind === 'cons'; list = list.tail) parts.push(this.show(list.head));
     return `[${parts.join(', ')}]`;
+  }
+
+  private unbound(token: Token, slot: number): UsagiError {
+    return new UsagiError(`'${token.text}'... 글자 수가 ${slot}인 변수는 묶은 적이 없어`, token);
   }
 
   private tooDeep(): string {

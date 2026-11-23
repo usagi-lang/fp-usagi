@@ -4,6 +4,7 @@ import { DICTIONARY, TOUR } from './docs.ts';
 import { EXAMPLES } from './examples.ts';
 import type { Example } from './examples.ts';
 import { escape, highlight, inline } from './highlight.ts';
+import type { Mark } from './highlight.ts';
 import { Runner } from './runner.ts';
 import type { Pos } from '../../src/error.ts';
 import { version } from '../../package.json';
@@ -37,16 +38,17 @@ const runner = new Runner();
 const runKey = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘↵' : 'Ctrl ↵';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
-let mark: Pos | null = null;
+let mark: Mark | null = null;
+let warnings = 0;
 
 function render(): void {
   painted.innerHTML = highlight(source.value, mark);
   const count = source.value.split('\n').length;
-  gutter.innerHTML = Array.from({ length: count }, (_, i) => (i + 1 === mark?.line ? `<span class="mark">${i + 1}</span>` : String(i + 1))).join('\n');
+  gutter.innerHTML = Array.from({ length: count }, (_, i) => (i + 1 === mark?.line ? `<span class="mark ${mark.kind}">${i + 1}</span>` : String(i + 1))).join('\n');
   syncScroll();
 }
 
-function setMark(next: Pos | null): void {
+function setMark(next: Mark | null): void {
   if (mark === next) return;
   mark = next;
   render();
@@ -134,7 +136,7 @@ function setRunning(running: boolean): void {
   runButton.querySelector('.label')!.textContent = running ? '중지' : '실행';
 }
 
-function append(text: string, kind: 'out' | 'error' | 'note'): HTMLSpanElement {
+function append(text: string, kind: 'out' | 'warn' | 'error' | 'note'): HTMLSpanElement {
   const previous = output.textContent ?? '';
   const span = document.createElement('span');
   span.className = kind;
@@ -144,12 +146,7 @@ function append(text: string, kind: 'out' | 'error' | 'note'): HTMLSpanElement {
   return span;
 }
 
-function fail(message: string, pos: Pos | undefined): void {
-  const box = append(message, 'error');
-  if (!pos) {
-    setStatus('하아? 오류가 났습니다', 'error');
-    return;
-  }
+function addJump(box: HTMLSpanElement, pos: Pos): void {
   const jump = document.createElement('button');
   jump.type = 'button';
   jump.className = 'jump';
@@ -157,7 +154,22 @@ function fail(message: string, pos: Pos | undefined): void {
   jump.addEventListener('click', () => goTo(pos));
   box.append(jump);
   output.scrollTop = output.scrollHeight;
-  setMark(pos);
+}
+
+function caution(message: string, pos: Pos): void {
+  warnings++;
+  addJump(append(message, 'warn'), pos);
+  if (!mark) setMark({ ...pos, kind: 'warn' });
+}
+
+function fail(message: string, pos: Pos | undefined): void {
+  const box = append(message, 'error');
+  if (!pos) {
+    setStatus('하아? 오류가 났습니다', 'error');
+    return;
+  }
+  addJump(box, pos);
+  setMark({ ...pos, kind: 'error' });
   setStatus(`하아? ${pos.line}줄 ${pos.col}칸에서 오류가 났습니다`, 'error');
 }
 
@@ -172,14 +184,16 @@ function run(): void {
   }
   output.replaceChildren();
   setMark(null);
+  warnings = 0;
   setRunning(true);
   setStatus('실행 중…', 'busy');
   runner.run(source.value, stdin.value, {
     out: (text) => append(text, 'out'),
+    warn: caution,
     done: (ms) => {
       setRunning(false);
       if (!output.textContent) append('출력이 없습니다.', 'note');
-      setStatus(`야하! ${elapsed(ms)} 끝났습니다`, 'ok');
+      setStatus(`야하! ${elapsed(ms)} 끝났습니다${warnings ? `. 경고가 ${warnings}개 있습니다` : ''}`, 'ok');
     },
     error: (message, _ms, pos) => {
       setRunning(false);

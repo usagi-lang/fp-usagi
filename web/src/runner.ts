@@ -3,6 +3,7 @@ import type { Pos } from '../../src/error.ts';
 
 export type Handlers = {
   out(text: string): void;
+  warn(message: string, pos: Pos): void;
   done(ms: number): void;
   error(message: string, ms: number, pos?: Pos): void;
 };
@@ -28,6 +29,7 @@ export class Runner {
     worker.addEventListener('message', (event: MessageEvent<Reply>) => {
       const message = event.data;
       if (message.kind === 'out') return handlers.out(message.text);
+      if (message.kind === 'warn') return handlers.warn(message.message, message.pos);
       this.stop();
       if (message.kind === 'done') handlers.done(message.ms);
       else handlers.error(message.message, message.ms, message.pos);

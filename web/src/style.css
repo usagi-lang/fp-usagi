@@ -15,6 +15,8 @@
   --focus: oklch(0.66 0.16 78);
   --error: oklch(0.52 0.175 28);
   --error-soft: oklch(0.95 0.032 32);
+  --warn: oklch(0.52 0.12 70);
+  --warn-soft: oklch(0.94 0.05 85);
   --ok: oklch(0.5 0.12 150);
   --selection: oklch(0.88 0.12 93 / 0.55);
 
@@ -57,6 +59,8 @@
     --focus: oklch(0.82 0.15 90);
     --error: oklch(0.76 0.14 30);
     --error-soft: oklch(0.29 0.05 30);
+    --warn: oklch(0.82 0.13 80);
+    --warn-soft: oklch(0.3 0.05 80);
     --ok: oklch(0.78 0.12 150);
     --selection: oklch(0.6 0.12 92 / 0.38);
 
@@ -442,9 +446,21 @@ input {
   text-underline-offset: 3px;
 }
 
+.t-warn {
+  border-radius: 0.2rem;
+  background: var(--warn-soft);
+  text-decoration: underline wavy var(--warn);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .gutter .mark {
   color: var(--error);
   font-weight: 700;
+}
+
+.gutter .mark.warn {
+  color: var(--warn);
 }
 
 .t-bad {
@@ -495,6 +511,15 @@ input {
   color: var(--error);
 }
 
+.output .warn {
+  display: inline-block;
+  margin: 0.25rem 0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
 .output .jump {
   display: block;
   margin-top: 0.35rem;
@@ -513,7 +538,7 @@ input {
 }
 
 .output .jump:focus-visible {
-  outline: 2px solid var(--error);
+  outline: 2px solid currentColor;
   outline-offset: 2px;
   border-radius: 0.2rem;
 }

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { Session, run } from '../src/interpreter.ts';
 import { encodeList, encodeNumber, encodeText } from '../src/encode.ts';
 import { UsagiError } from '../src/error.ts';
+import type { Warning } from '../src/error.ts';
 
 function io(input: string) {
   const chars = [...input].map((c) => c.codePointAt(0)!);
@@ -15,6 +16,13 @@ function exec(source: string, input = ''): string {
   const { out, io: handle } = io(input);
   run(source, handle);
   return out.text;
+}
+
+function warnings(source: string): { text: string; warned: Warning[] } {
+  const warned: Warning[] = [];
+  let text = '';
+  run(source, { write: (chunk) => { text += chunk; }, read: () => -1, warn: (warning) => warned.push(warning) });
+  return { text, warned };
 }
 
 const lines = (...rows: string[]) => rows.join('\n') + '\n';
@@ -61,8 +69,13 @@ describe('숫자와 변수', () => {
     assert.equal(exec(lines('미야아아 우라 야하!!!!!', '미이이야하 우우', '미이이야하 우아')), lines('5', '5'));
   });
 
-  test('묶지 않은 변수는 0', () => {
-    assert.equal(exec('미이이야하 우라라'), '0\n');
+  test('묶지 않은 변수는 오류', () => {
+    fails('미이이야하 우라라', "'우라라'... 글자 수가 3인 변수는 묶은 적이 없어");
+    fails('미이이야하 우-', "'우-'... 글자 수가 1인 변수는 묶은 적이 없어");
+  });
+
+  test('고르지 않은 조건식 가지의 묶지 않은 변수는 괜찮다', () => {
+    assert.equal(exec('미이이야하 푸루 야하 야하 야하! 우라라'), '1\n');
   });
 
   test('다시 묶으면 앞의 값을 가린다', () => {
@@ -148,8 +161,18 @@ describe('함수', () => {
     assert.equal(exec(lines('우라-야하! 하아!', '하아?', '우라-야하! 하아아!', '푸루야', '하아아?', '미이이야하 하아-', '미이이야하 하아아-')), lines('0', '0'));
   });
 
-  test('이름 있는 함수는 블록이 시작될 때의 값을 본다', () => {
-    assert.equal(exec(lines('미야아아 우라 야하!!!!!', '우라-야하! 하아! 우우우', '푸루야 우라', '하아?', '미이이야하 하아- 야하!')), '0\n');
+  test('이름 있는 함수는 선언한 자리까지 묶은 값을 본다', () => {
+    assert.equal(exec(lines('미야아아 우라 야하!!!!!', '우라-야하! 하아! 우우우', '푸루야 우라', '하아?', '미이이야하 하아- 야하!')), '5\n');
+    fails(lines('우라-야하! 하아!', '푸루야 우라', '하아?', '미야아아 우라 야하!!!!!', '미이이야하 하아-'), "'우라'... 글자 수가 2인 변수는 묶은 적이 없어");
+  });
+
+  test('함수 안의 함수는 본문 앞쪽에서 묶은 값을 본다', () => {
+    const source = lines('우라-야하! 하아! 우', '미야아아 우라 푸리리릿 우 우', '우라-야하! 하아아! 우라라', '푸루야 푸릿 우라 우라라', '하아아?', '푸루야 하아아- 야하!', '하아?', '미이이야하 하아- 야하!!!');
+    assert.equal(exec(source), '10\n');
+  });
+
+  test('선언 자리를 지나도 같은 함수다', () => {
+    assert.equal(exec(lines('미야아아 우 하아', '미야아아 우라 야하!!', '우라-야하! 하아!', '푸루야 우라', '하아?', '미이이야하 푸루 우 하아 야하! 야하', '미이이야하 우-')), lines('1', '2'));
   });
 
   test('푸루야 는 같은 줄의 값만 돌려준다', () => {
@@ -404,6 +427,15 @@ describe('오류', () => {
   test('같은 곳에 같은 함수 두 번', () => fails(lines('우라-야하! 하아!', '하아?', '우라-야하! 하아!', '하아?'), '두 번'));
   test('없는 함수', () => fails('미이이야하 하아아-', "'하아아-'... 그런 함수는 없어"));
   test('함수가 아닌 변수 부르기', () => fails(lines('미야아아 우 야하!', '미이이야하 우-'), '함수가 아니라서'));
+  test('함수에 넘길 값이 모자라면 그 호출을 가리킨다', () => {
+    assert.throws(
+      () => exec(lines('우라-야하! 하아! 우 우라', '하아?', '미이이야하 하아- 야하!')),
+      (err: unknown) => err instanceof UsagiError && err.message.includes("'하아-'에 넘길 값이 모자라. 매개변수는 2개인데 1개만 있어") && err.pos?.line === 3 && err.pos.col === 7,
+    );
+    fails(lines('우라-야하! 하아! 우 우라', '하아?', '하! 미이이야하 하아- 야하! 하?'), "'하아-'에 넘길 값이 모자라");
+    fails(lines('우라-야하! 하아! 우', '하아?', '미이이야하 하아-', '미이이야하 야하!'), "'하아-'에 넘길 값이 모자라. 매개변수는 1개인데 0개만 있어");
+    fails(lines('우라-야하! 하아! 우 우라', '하아?', '미이이야하 하아- 야하! 안녕'), "'안녕'... 우사기는 그런 말 안 해");
+  });
   test('나눠 묶기에는 변수나 유후', () => {
     fails('미야아아 야하! 야하!', "'미야아아' 다음엔 변수나 '유후'가 와야 해");
     fails('미야아아 유후 우 야하! 우이', "'유후' 다음엔 변수나 '유후'가 와야 해");
@@ -470,6 +502,34 @@ describe('오류', () => {
   test('목록 함수 안의 깊은 재귀도 자리를 가리킨다', () => {
     const source = lines('우라-야하! 하아! 우', '푸루야 푸릿 야하! 유후후 야앗 하아 유후 우 우이', '하아?', '미이이야하 하아- 야하!');
     assert.throws(() => exec(source), (err: unknown) => err instanceof UsagiError && err.message.includes('너무 깊이') && err.pos !== undefined);
+  });
+});
+
+describe('인자 줄 넘김 경고', () => {
+  const missing = lines('우라-야하! 하아! 우 우라', '미이이야하 우', '미이이야하 우라', '하아?', '하아- 야하!', '하아- 야하!! 야하!!!');
+
+  test('인자가 모자라 다음 줄을 가져가면 경고하고 그대로 돈다', () => {
+    const { text, warned } = warnings(missing);
+    assert.equal(text, lines('2', '3', '1', '0'));
+    assert.equal(warned.length, 1);
+    assert.deepEqual(warned[0].pos, { line: 5, col: 1 });
+    assert.equal(warned[0].message, "하아? (5줄 1칸) '하아-'가 6줄의 '하아-'까지 인자로 가져갔어. 인자를 빠뜨린 게 아니라면 6줄을 더 들여 써");
+  });
+
+  test('더 들여 쓴 줄은 이어 쓴 인자로 본다', () => {
+    const { text, warned } = warnings(lines('우라-야하! 하아! 우 우라', '푸루야 푸릿 우 우라', '하아?', '미이이야하 하아- 야하!', '  야하!!'));
+    assert.equal(text, '3\n');
+    assert.equal(warned.length, 0);
+  });
+
+  test('같은 줄의 인자와 여러 줄의 목록은 경고하지 않는다', () => {
+    assert.equal(warnings(lines('우라-야하! 하아! 우', '푸루야 우', '하아?', '미이이야하 하아- 유후 야하!', '유후 야하!! 우이')).warned.length, 0);
+    assert.equal(warnings(encodeText('우라\n야하')).warned.length, 0);
+  });
+
+  test('같은 호출은 한 번만 경고한다', () => {
+    const source = lines('우라-야하! 하아! 우 우라', '푸루야 우라', '하아?', '야앗 우라-야하! 우 하! 하아- 우', '야하!! 하? 유후후후후 야하! 야하!!!');
+    assert.equal(warnings(source).warned.length, 1);
   });
 });
 

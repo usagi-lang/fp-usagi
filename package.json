@@ -1,6 +1,6 @@
 {
   "name": "usagi-lang",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "우사기 말로 쓰는 함수형 난해한 프로그래밍 언어",
   "type": "module",
   "bin": {

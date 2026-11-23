@@ -109,9 +109,21 @@ describe('플레이그라운드 페이지', () => {
   });
 });
 
+function warned(source: string): string[] {
+  const found: string[] = [];
+  run(source, { write: () => {}, read: () => -1, warn: (warning) => found.push(warning.message) });
+  return found;
+}
+
 describe('예제 목록', () => {
   test('모든 예제가 오류 없이 끝난다', () => {
     for (const name of examples) assert.doesNotThrow(() => output(read(`examples/${name}`)), name);
+  });
+
+  test('예제와 문서의 코드는 경고 없이 돈다', () => {
+    for (const name of examples) assert.deepEqual(warned(read(`examples/${name}`)), [], name);
+    for (const item of TOUR) assert.deepEqual(warned(item.code), [], item.title);
+    for (const { code } of fences(readme).filter((fence) => fence.lang === '')) assert.deepEqual(warned(code), [], code);
   });
 
   test('모든 예제가 플레이그라운드 목록에 있다', () => {

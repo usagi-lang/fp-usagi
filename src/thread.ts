@@ -5,7 +5,11 @@ import { UsagiError } from './error.ts';
 
 export type Options = { interactive: boolean; tty: boolean };
 export type Job = { source: string };
-export type Reply = { kind: 'out'; text: string } | { kind: 'done' } | { kind: 'error'; message: string };
+export type Reply =
+  | { kind: 'out'; text: string }
+  | { kind: 'warn'; message: string }
+  | { kind: 'done' }
+  | { kind: 'error'; message: string };
 
 function stdinReader(): () => number {
   const decoder = new TextDecoder();
@@ -49,6 +53,10 @@ const session = new Session({
   read: () => {
     flush();
     return stdin();
+  },
+  warn: ({ message }) => {
+    flush();
+    reply({ kind: 'warn', message });
   },
 });
 
