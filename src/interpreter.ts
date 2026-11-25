@@ -107,7 +107,7 @@ export class Session {
     const scope: Scope = { table: new Map(), parent };
     for (const node of nodes) {
       if (node.kind !== 'func') continue;
-      if (scope.table.has(node.index)) throw new UsagiError(`'${node.name}' 함수가 같은 곳에 두 번 있어`, node);
+      if (scope.table.has(node.index)) throw new UsagiError(`'${node.name}' 함수가 같은 블록에 두 번 있네! 하나는 이름을 바꾸면 돼`, node);
       scope.table.set(node.index, { kind: 'closure', name: node.name, params: node.params, body: node.body, env, scope });
     }
     return scope;
@@ -129,7 +129,7 @@ export class Session {
         if (outcome.kind !== 'done') return outcome;
         continue;
       }
-      if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있어', node);
+      if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있네... 변수에 바인딩하거나 인자로 넘기면 돼', node);
       const word = node.word;
       if (word.kind === 'funcCall' || word.kind === 'varCall') {
         cur.i--;
@@ -166,7 +166,7 @@ export class Session {
   private condition(first: Token, cur: Cursor, env: Env, scope: Scope): Outcome | null {
     const holds = this.test(first, cur, env, scope, true);
     const next = cur.nodes[cur.i];
-    if (!next) throw new UsagiError('조건문 다음에 할 일이 없어', first);
+    if (!next) throw new UsagiError('조건문 다음에 할 일이 없네! 실행할 문이나 블록을 써 보자', first);
     if (next.kind === 'block') {
       cur.i++;
       if (!holds) return null;
@@ -190,7 +190,7 @@ export class Session {
   private skip(cur: Cursor, env: Env, scope: Scope): void {
     const node = cur.nodes[cur.i++];
     if (node.kind === 'block' || node.kind === 'func') return;
-    if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있어', node);
+    if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있네... 변수에 바인딩하거나 인자로 넘기면 돼', node);
     const word = node.word;
     if (word.kind === 'funcCall' || word.kind === 'varCall') {
       cur.i--;
@@ -208,7 +208,7 @@ export class Session {
       this.expr(cur, env, scope, false);
     } else if (COMPARISONS.has(keyword)) {
       this.test(node, cur, env, scope, false);
-      if (!cur.nodes[cur.i]) throw new UsagiError('조건문 다음에 할 일이 없어', node);
+      if (!cur.nodes[cur.i]) throw new UsagiError('조건문 다음에 할 일이 없네! 실행할 문이나 블록을 써 보자', node);
       this.skip(cur, env, scope);
     } else if (this.isStatementOperator(keyword)) {
       this.unused(node, keyword);
@@ -254,9 +254,9 @@ export class Session {
 
   private expr(cur: Cursor, env: Env, scope: Scope, live: boolean): Value {
     const node = cur.nodes[cur.i++];
-    if (!node) throw new UsagiError('값이 와야 하는데 코드가 끝났어', cur.nodes[cur.nodes.length - 1]);
+    if (!node) throw new UsagiError('값이 와야 하는데 코드가 끝나 버렸어!', cur.nodes[cur.nodes.length - 1]);
     if (node.kind === 'lambda') return live ? this.lambda(node, env, scope) : 0n;
-    if (node.kind !== 'token') throw new UsagiError('여기엔 값이 와야 해', node);
+    if (node.kind !== 'token') throw new UsagiError('여기엔 값이 와야 한대!', node);
     const word = node.word;
     switch (word.kind) {
       case 'number':
@@ -299,8 +299,8 @@ export class Session {
         }
       }
     }
-    if (word.kind === 'unknown') throw new UsagiError(`'${node.text}'... 우사기는 그런 말 안 해`, node);
-    throw new UsagiError(`'${node.text}'... 여기엔 값이 와야 해`, node);
+    if (word.kind === 'unknown') throw new UsagiError(`'${node.text}'... 우사기는 그런 말 안 하잖아!`, node);
+    throw new UsagiError(`'${node.text}'... 여기엔 값이 와야 한대!`, node);
   }
 
   private reference(at: Token, cur: Cursor): Builtin {
@@ -317,8 +317,8 @@ export class Session {
     }
     const arity = word?.kind === 'keyword' ? OPERATORS.get(word.keyword) : undefined;
     if (node?.kind !== 'token' || word?.kind !== 'keyword' || !arity) {
-      const hint = word?.kind === 'number' ? `. 음수라면 '${at.text}${(node as Token).text}'처럼 붙여 써` : '';
-      throw new UsagiError(`'${at.text}' 다음엔 인자를 받는 키워드가 와야 해${hint}`, node ?? at);
+      const hint = word?.kind === 'number' ? `. 음수라면 '${at.text}${(node as Token).text}'처럼 붙여 쓰면 돼` : '';
+      throw new UsagiError(`'${at.text}' 다음엔 인자를 받는 키워드가 와야 한대${hint}`, node ?? at);
     }
     cur.i++;
     return { kind: 'builtin', name: node.text, ops: [word.keyword], arity, bound: [], at: node };
@@ -408,7 +408,7 @@ export class Session {
       }
       case 'partial': {
         const fn = this.func(args[0], at);
-        if (this.arity(fn) === 0) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 1개 이상이어야 해`, at);
+        if (this.arity(fn) === 0) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 1개 이상이어야 한대!`, at);
         return this.partial(fn, args[1]);
       }
       case 'compose':
@@ -417,7 +417,7 @@ export class Session {
         return this.call(this.function(args[1], 1, at), [args[0]]);
       case 'flip': {
         const fn = this.func(args[0], at);
-        if (this.arity(fn) < 2) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 2개 이상이어야 해`, at);
+        if (this.arity(fn) < 2) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 2개 이상이어야 한대!`, at);
         return { kind: 'flipped', name: at.text, fn, bound: [] };
       }
       default:
@@ -431,17 +431,17 @@ export class Session {
 
   private list(value: Value, at: Token): List {
     if (this.isList(value)) return value;
-    throw new UsagiError(`'${at.text}'에는 리스트가 와야 하는데 ${this.kind(value)} 왔어`, at);
+    throw new UsagiError(`'${at.text}'에는 리스트가 와야 하는데 ${this.kind(value)} 왔네!`, at);
   }
 
   private yielded(value: Value, at: Token): List {
     if (this.isList(value)) return value;
-    throw new UsagiError(`'${at.text}'에 넘긴 함수는 리스트를 반환해야 하는데 ${this.kind(value)} 나왔어`, at);
+    throw new UsagiError(`'${at.text}'에 넘긴 함수는 리스트를 반환해야 하는데 ${this.kind(value)} 나왔네!`, at);
   }
 
   private count(value: Value, at: Token): bigint {
     const count = this.integer(value, at);
-    if (count < 0n) throw new UsagiError(`'${at.text}'에는 0 이상의 수가 와야 하는데 ${this.subject(count)} 왔어`, at);
+    if (count < 0n) throw new UsagiError(`'${at.text}'에는 0 이상의 수가 와야 하는데 ${this.subject(count)} 왔네!`, at);
     return count;
   }
 
@@ -478,7 +478,7 @@ export class Session {
     const result = this.call(fn, [first, second]);
     if (result === 1n || result === 0n) return result === 1n;
     const shown = typeof result === 'bigint' ? this.subject(result) : this.kind(result);
-    throw new UsagiError(`'${at.text}'에 넘긴 함수는 1이나 0을 반환해야 하는데 ${shown} 나왔어`, at);
+    throw new UsagiError(`'${at.text}'에 넘긴 함수는 1이나 0을 반환해야 하는데 ${shown} 나왔네!`, at);
   }
 
   private subject(value: bigint): string {
@@ -487,7 +487,7 @@ export class Session {
 
   private filled(value: Value, at: Token, part: string): Extract<List, { kind: 'cons' }> {
     const list = this.list(value, at);
-    if (list.kind === 'empty') throw new UsagiError(`'${at.text}'... 빈 리스트에는 ${part} 없어`, at);
+    if (list.kind === 'empty') throw new UsagiError(`'${at.text}'... 빈 리스트에는 ${part} 없어!`, at);
     return list;
   }
 
@@ -511,13 +511,13 @@ export class Session {
 
   private func(value: Value, at: Token): Func {
     if (this.isFunc(value)) return value;
-    throw new UsagiError(`'${at.text}'에는 함수가 와야 하는데 ${this.kind(value)} 왔어`, at);
+    throw new UsagiError(`'${at.text}'에는 함수가 와야 하는데 ${this.kind(value)} 왔네!`, at);
   }
 
   private function(value: Value, arity: number, at: Token): Func {
     const fn = this.func(value, at);
     const actual = this.arity(fn);
-    if (actual !== arity) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 ${arity}개여야 하는데 ${actual}개야`, at);
+    if (actual !== arity) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 ${arity}개여야 하는데 ${actual}개네!`, at);
     return fn;
   }
 
@@ -536,7 +536,7 @@ export class Session {
     const values: Value[] = [];
     while (values.length < arity) {
       const next = cur.nodes[cur.i];
-      if (this.ends(next)) throw new UsagiError(`'${at.text}'에 넘길 인자가 모자라. 매개변수는 ${arity}개인데 ${values.length}개만 있어`, at);
+      if (this.ends(next)) throw new UsagiError(`'${at.text}'에 넘길 인자가 모자라! 매개변수는 ${arity}개인데 인자는 ${values.length}개야. 마저 넘겨 보자`, at);
       this.reaches(at, next);
       values.push(this.expr(cur, env, scope, live));
     }
@@ -551,14 +551,14 @@ export class Session {
     if (next?.kind !== 'token' || next.line === at.line || next.col !== next.indent || next.indent > at.indent) return;
     if (this.warned.has(at)) return;
     this.warned.add(at);
-    this.io.warn?.(warning(`'${at.text}'가 ${next.line}줄의 '${next.text}'까지 인자로 가져갔어. 인자를 빠뜨린 게 아니라면 ${next.line}줄을 더 들여 써`, at));
+    this.io.warn?.(warning(`'${at.text}'가 ${next.line}줄의 '${next.text}'까지 인자로 가져간 것 같아. 인자를 빠뜨린 게 아니라면 ${next.line}줄을 더 들여 쓰면 돼`, at));
   }
 
   private unused(token: Token, keyword: Keyword): void {
     if (!VALUES.has(keyword) || this.warned.has(token)) return;
     this.warned.add(token);
     const { Return, Print } = this.words.lang;
-    this.io.warn?.(warning(`'${token.text}' 결과를 아무도 안 써. 반환하려면 앞에 '${Return}'를, 출력하려면 '${Print}'를 붙여`, token));
+    this.io.warn?.(warning(`결과를 아무도 안 쓰는 것 같아. '${token.text}' 말이야! 반환하려면 앞에 '${Return}'를, 출력하려면 '${Print}'를 붙이면 돼`, token));
   }
 
   private partial(fn: Func, value: Value): Func {
@@ -604,7 +604,7 @@ export class Session {
     const value = word.kind === 'varCall' ? this.lookup(env, word.slot) : undefined;
     if (word.kind === 'varCall' && value === undefined) throw this.unbound(token, word.slot);
     if (value !== undefined && this.isFunc(value)) return value;
-    throw new UsagiError(`'${token.text}'... 함수가 아니라서 호출할 수 없어`, token);
+    throw new UsagiError(`'${token.text}'... 함수가 아니라서 호출할 수 없대!`, token);
   }
 
   private find(scope: Scope | null, index: number, token: Token): Closure {
@@ -612,7 +612,7 @@ export class Session {
       const fn = s.table.get(index);
       if (fn) return fn;
     }
-    throw new UsagiError(`'${token.text}'... 그런 함수는 없어`, token);
+    throw new UsagiError(`'${token.text}'... 그런 함수는 없대!`, token);
   }
 
   private lookup(env: Env, slot: number): Value | undefined {
@@ -626,9 +626,9 @@ export class Session {
       return { head: this.pattern(cur, node, slots), tail: this.pattern(cur, node, slots), at: node };
     }
     if (node?.kind !== 'token' || node.word.kind !== 'variable') {
-      throw new UsagiError(`'${at.text}' 다음엔 변수나 '${this.words.lang.Cons}'가 와야 해`, node ?? at);
+      throw new UsagiError(`'${at.text}' 다음엔 변수나 '${this.words.lang.Cons}'가 와야 한대!`, node ?? at);
     }
-    if (slots.includes(node.word.slot)) throw new UsagiError(`'${node.text}'와 글자 수가 같은 변수가 이미 있어`, node);
+    if (slots.includes(node.word.slot)) throw new UsagiError(`'${node.text}'와 글자 수가 같은 변수가 이미 있네!`, node);
     slots.push(node.word.slot);
     return node.word.slot;
   }
@@ -636,7 +636,7 @@ export class Session {
   private bind(pattern: Pattern, value: Value, env: Env): Env {
     if (typeof pattern === 'number') return { slot: pattern, value, next: env };
     const list = this.list(value, pattern.at);
-    if (list.kind === 'empty') throw new UsagiError(`'${pattern.at.text}'... 빈 리스트는 구조 분해할 수 없어`, pattern.at);
+    if (list.kind === 'empty') throw new UsagiError(`'${pattern.at.text}'... 빈 리스트는 구조 분해할 수 없어!`, pattern.at);
     return this.bind(pattern.tail, list.tail, this.bind(pattern.head, list.head, env));
   }
 
@@ -658,7 +658,7 @@ export class Session {
   }
 
   private integer(value: Value, at: Token): bigint {
-    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 정수가 와야 하는데 ${this.kind(value)} 왔어`, at);
+    if (typeof value === 'object') throw new UsagiError(`'${at.text}'에는 정수가 와야 하는데 ${this.kind(value)} 왔네!`, at);
     return value;
   }
 
@@ -675,10 +675,10 @@ export class Session {
       if (op === 'subtract') return a - b;
       if (op === 'multiply') return a * b;
     } catch (err) {
-      if (err instanceof RangeError && !overflowed(err)) throw new UsagiError('수가 너무 커졌어', at);
+      if (err instanceof RangeError && !overflowed(err)) throw new UsagiError('수가 너무 커져 버렸어!', at);
       throw err;
     }
-    if (b === 0n) throw new UsagiError('0으로는 나눌 수 없어', at);
+    if (b === 0n) throw new UsagiError('0으로 나누라는 거야!? 0으로는 나눌 수 없어', at);
     return op === 'divide' ? a / b : a % b;
   }
 
@@ -710,7 +710,7 @@ export class Session {
 
   private char(value: Value, at: Token): string {
     const code = this.integer(value, at);
-    if (code < 0n || code > 0x10ffffn) throw new UsagiError(`${code}번 문자는 없어`, at);
+    if (code < 0n || code > 0x10ffffn) throw new UsagiError(`${code}번 문자는 없대!`, at);
     return String.fromCodePoint(Number(code));
   }
 
@@ -723,11 +723,11 @@ export class Session {
   }
 
   private unbound(token: Token, slot: number): UsagiError {
-    return new UsagiError(`'${token.text}'... 글자 수가 ${slot}인 변수는 정의되지 않았어`, token);
+    return new UsagiError(`'${token.text}'... 처음 보는 변수래! 글자 수가 ${slot}인 변수는 정의되지 않았어`, token);
   }
 
   private tooDeep(): string {
-    return `너무 깊이 들어갔어. '${this.words.lang.Return}' 바로 뒤에서 부르는 꼬리 호출로 바꾸면 깊이 제한이 없어`;
+    return `너무 깊이 들어갔어~ 괜찮아, '${this.words.lang.Return}' 바로 뒤에서 부르는 꼬리 호출로 바꾸면 깊이 제한이 없어!`;
   }
 
   private deep(err: unknown, at: Token): unknown {
@@ -739,7 +739,7 @@ export class Session {
   }
 
   private misplaced(token: Token): UsagiError {
-    if (token.word.kind === 'unknown') return new UsagiError(`'${token.text}'... 우사기는 그런 말 안 해`, token);
-    return new UsagiError(`'${token.text}'만 덩그러니 있어`, token);
+    if (token.word.kind === 'unknown') return new UsagiError(`'${token.text}'... 우사기는 그런 말 안 하잖아!`, token);
+    return new UsagiError(`'${token.text}'만 덩그러니 있네...`, token);
   }
 }

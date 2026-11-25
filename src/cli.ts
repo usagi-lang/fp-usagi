@@ -26,7 +26,7 @@ function report(err: unknown): void {
   }
   const code = (err as { code?: string; path?: string }).code;
   if (code === 'ENOENT') {
-    console.error(`하아? 하아? '${(err as { path?: string }).path}' 파일을 못 찾았어`);
+    console.error(`하아? 하아? '${(err as { path?: string }).path}' 파일을 못 찾았어... 경로를 다시 볼까?`);
     return;
   }
   throw err;
@@ -137,7 +137,7 @@ function main(args: string[]): number | undefined {
       return undefined;
     }
     if (command === 'num') {
-      if (!/^-?\d+$/.test(more[0] ?? '')) throw new UsagiError('정수를 하나 줘');
+      if (!/^-?\d+$/.test(more[0] ?? '')) throw new UsagiError('정수를 하나 달래!');
       console.log(encodeNumber(BigInt(more[0])));
       return 0;
     }
@@ -145,8 +145,8 @@ function main(args: string[]): number | undefined {
       process.stdout.write(encodeText(more.length ? more.join(' ') : readFileSync(0, 'utf8')));
       return 0;
     }
-    if (more.length) throw new UsagiError(`'${more[0]}'... 이런 인자는 몰라`);
-    if (extname(command) !== '.yaha') console.error('하아? .yaha 파일이 아니지만 일단 돌려볼게');
+    if (more.length) throw new UsagiError(`'${more[0]}'... 처음 보는 인자래!`);
+    if (extname(command) !== '.yaha') console.error('하아? .yaha 파일이 아니지만 일단 돌려 볼게... 어떻게든 되어라!');
     execute(readFileSync(command, 'utf8'));
     return undefined;
   } catch (err) {
