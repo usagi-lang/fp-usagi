@@ -13,11 +13,11 @@ const STACK_MB = 256;
 const USAGE = `우사기랭 ${pkg.version} — 우라-야하!
 
 사용법:
-  ura <파일.yaha>    프로그램 실행
-  ura                대화형 모드 (빈 줄: 실행, :exit: 끝)
-  ura num <정수>     정수를 우사기 말로 바꿔줌
-  ura encode [글]    글을 출력하는 프로그램을 만들어줌 (글이 없으면 표준 입력을 읽음)
-  ura --version      버전 보기`;
+  ura <파일.yaha>      프로그램 실행
+  ura                  REPL (빈 줄: 실행, :exit: 끝)
+  ura num <정수>       정수를 우사기랭 표현식으로 바꿔줌
+  ura encode [문자열]  문자열을 출력하는 프로그램을 만들어줌 (문자열이 없으면 표준 입력을 읽음)
+  ura --version        버전 보기`;
 
 function report(err: unknown): void {
   if (err instanceof UsagiError) {

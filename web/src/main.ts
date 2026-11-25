@@ -282,8 +282,8 @@ function setupTools(): void {
       textInput.focus();
       return;
     }
-    load(encodeText(textInput.value), '글.yaha');
-    setStatus('글을 출력하는 프로그램을 만들었습니다', 'ok');
+    load(encodeText(textInput.value), '문자열.yaha');
+    setStatus('문자열을 출력하는 프로그램을 만들었습니다', 'ok');
     source.focus();
   });
 }

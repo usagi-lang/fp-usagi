@@ -63,7 +63,7 @@ export function parse(source: string, words: Words): Node[] {
     const ps = params();
     const open = tokens[i];
     if (!isBlockStart(open)) {
-      throw new UsagiError(`이름 없는 함수는 매개변수 다음에 '${words.lang.BlockStart}'로 본문을 열어야 해`, open ?? start);
+      throw new UsagiError(`익명 함수는 매개변수 다음에 '${words.lang.BlockStart}'로 본문을 열어야 해`, open ?? start);
     }
     i++;
     const body = sequence({ matches: isBlockEnd, word: BlockEnd, opener: open });

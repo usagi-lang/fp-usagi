@@ -28,12 +28,24 @@ export type Language = {
   Head: string;
   Tail: string;
   Range: string;
+  Length: string;
+  Reverse: string;
+  Append: string;
+  Take: string;
+  Drop: string;
+  Zip: string;
   Map: string;
   Filter: string;
   Fold: string;
+  FlatMap: string;
+  Any: string;
+  All: string;
+  Find: string;
+  Sort: string;
   Partial: string;
   Compose: string;
   Pipe: string;
+  Flip: string;
   Reference: string;
 };
 
@@ -67,11 +79,23 @@ export const LANGUAGE: Language = {
   Head: '유후후',
   Tail: '유후후후',
   Range: '유후후후후',
+  Length: '유후후후후후',
+  Reverse: '유후후후후후후',
+  Append: '유후후후후후후후',
+  Take: '유후후후후후후후후',
+  Drop: '유후후후후후후후후후',
+  Zip: '유후후후후후후후후후후',
   Map: '야앗',
   Filter: '야아앗',
   Fold: '야아아앗',
+  FlatMap: '야아아아앗',
+  Any: '야아아아아앗',
+  All: '야아아아아아앗',
+  Find: '야아아아아아아앗',
+  Sort: '야아아아아아아아앗',
   Partial: '후응',
   Compose: '후으응',
   Pipe: '후으으응',
+  Flip: '후으으으응',
   Reference: '이',
 };

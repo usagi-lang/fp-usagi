@@ -18,7 +18,7 @@
 | 테스트 | [test/usagi.test.ts](test/usagi.test.ts) | |
 | 바뀐 점 | [CHANGELOG.md](CHANGELOG.md)의 `## 다음 버전` | |
 
-전에 돌던 코드가 다르게 돌게 되면 CHANGELOG의 **바뀐 것**에 적고, 어떻게 고치면 되는지도 씁니다.
+전에 돌던 코드가 다르게 돌게 되면 CHANGELOG의 **변경** 항목에 적고, 어떻게 고치면 되는지도 씁니다.
 
 ## 2. 버전 정하기
 

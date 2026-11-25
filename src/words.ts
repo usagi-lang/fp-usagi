@@ -5,8 +5,10 @@ export type Keyword =
   | 'equal' | 'less' | 'greater'
   | 'add' | 'subtract' | 'multiply' | 'divide' | 'remainder'
   | 'return' | 'blockStart' | 'blockEnd' | 'functionStart' | 'assignment'
-  | 'empty' | 'cons' | 'head' | 'tail' | 'range' | 'map' | 'filter' | 'fold'
-  | 'partial' | 'compose' | 'pipe' | 'reference';
+  | 'empty' | 'cons' | 'head' | 'tail' | 'range'
+  | 'length' | 'reverse' | 'append' | 'take' | 'drop' | 'zip'
+  | 'map' | 'filter' | 'fold' | 'flatMap' | 'any' | 'all' | 'find' | 'sort'
+  | 'partial' | 'compose' | 'pipe' | 'flip' | 'reference';
 
 export type Word =
   | { kind: 'keyword'; keyword: Keyword }
@@ -42,12 +44,24 @@ const KEYWORDS: [keyof Language, Keyword][] = [
   ['Head', 'head'],
   ['Tail', 'tail'],
   ['Range', 'range'],
+  ['Length', 'length'],
+  ['Reverse', 'reverse'],
+  ['Append', 'append'],
+  ['Take', 'take'],
+  ['Drop', 'drop'],
+  ['Zip', 'zip'],
   ['Map', 'map'],
   ['Filter', 'filter'],
   ['Fold', 'fold'],
+  ['FlatMap', 'flatMap'],
+  ['Any', 'any'],
+  ['All', 'all'],
+  ['Find', 'find'],
+  ['Sort', 'sort'],
   ['Partial', 'partial'],
   ['Compose', 'compose'],
   ['Pipe', 'pipe'],
+  ['Flip', 'flip'],
   ['Reference', 'reference'],
 ];
 

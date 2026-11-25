@@ -15,7 +15,7 @@
     <meta property="og:image" content="https://usagi-lang.github.io/fp-usagi/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="우사기랭, 우사기 말로 쓰는 함수형 프로그래밍 언어. 목록에 map을 적용하는 코드와 그 결과." />
+    <meta property="og:image:alt" content="우사기랭, 우사기 말로 쓰는 함수형 프로그래밍 언어. 리스트에 map을 적용하는 코드와 그 결과." />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f6d75c'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%23473a1c'%3E%EC%9A%B0%3C/text%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -91,8 +91,8 @@
             </div>
 
             <div id="panel-input" class="tab-panel" role="tabpanel" aria-labelledby="tab-input">
-              <label class="field-label" for="stdin"><code>야푸</code>가 한 글자씩 읽어 갈 글</label>
-              <textarea id="stdin" class="stdin" spellcheck="false" placeholder="여기에 쓴 글이 입력이 됩니다"></textarea>
+              <label class="field-label" for="stdin"><code>야푸</code>가 한 문자씩 읽어 갈 입력</label>
+              <textarea id="stdin" class="stdin" spellcheck="false" placeholder="여기에 쓴 내용이 표준 입력이 됩니다"></textarea>
             </div>
 
             <div id="panel-dict" class="tab-panel" role="tabpanel" aria-labelledby="tab-dict" hidden>
@@ -102,7 +102,7 @@
 
             <div id="panel-tools" class="tab-panel tools" role="tabpanel" aria-labelledby="tab-tools" hidden>
               <div class="tool">
-                <label class="field-label" for="num-input">숫자를 우사기 말로</label>
+                <label class="field-label" for="num-input">숫자를 우사기랭 표현식으로</label>
                 <div class="tool-row">
                   <input id="num-input" inputmode="numeric" autocomplete="off" maxlength="18" placeholder="72" />
                   <button id="num-insert" class="ghost small" type="button" disabled>편집기에 넣기</button>
@@ -110,7 +110,7 @@
                 <code id="num-output" class="tool-output" data-empty="true"></code>
               </div>
               <div class="tool">
-                <label class="field-label" for="text-input">글을 출력하는 프로그램</label>
+                <label class="field-label" for="text-input">문자열을 출력하는 프로그램</label>
                 <textarea id="text-input" rows="2" spellcheck="false" placeholder="야하! 우라~"></textarea>
                 <button id="text-make" class="ghost small" type="button">프로그램 만들기</button>
               </div>

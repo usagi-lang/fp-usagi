@@ -18,7 +18,8 @@ type Scope = { table: Map<number, Closure>; parent: Scope | null };
 export type Closure = { kind: 'closure'; name: string; params: number[]; body: Node[]; env: Env; scope: Scope };
 export type Composed = { kind: 'composed'; name: string; first: Func; then: Func };
 export type Builtin = { kind: 'builtin'; name: string; ops: Keyword[]; arity: number; bound: Value[]; at: Token };
-export type Func = Closure | Composed | Builtin;
+export type Flipped = { kind: 'flipped'; name: string; fn: Func; bound: Value[] };
+export type Func = Closure | Composed | Builtin | Flipped;
 export type List = { kind: 'cons'; head: Value; tail: List } | { kind: 'empty' };
 export type Value = bigint | Func | List;
 
@@ -31,7 +32,7 @@ type Cursor = { nodes: Node[]; i: number };
 type Pattern = number | { head: Pattern; tail: Pattern; at: Token };
 
 const EMPTY: List = { kind: 'empty' };
-const CALLERS = new Set<Keyword>(['map', 'filter', 'fold', 'pipe']);
+const CALLERS = new Set<Keyword>(['map', 'filter', 'fold', 'flatMap', 'any', 'all', 'find', 'sort', 'pipe']);
 const COMPARISONS = new Set<Keyword>(['equal', 'less', 'greater']);
 const PRINTS = new Set<Keyword>(['print', 'charPrint', 'textPrint']);
 const OPERATORS = new Map<Keyword, number>([
@@ -46,12 +47,29 @@ const OPERATORS = new Map<Keyword, number>([
   ['head', 1],
   ['tail', 1],
   ['range', 2],
+  ['length', 1],
+  ['reverse', 1],
+  ['append', 2],
+  ['take', 2],
+  ['drop', 2],
+  ['zip', 2],
   ['map', 2],
   ['filter', 2],
   ['fold', 3],
+  ['flatMap', 2],
+  ['any', 2],
+  ['all', 2],
+  ['find', 2],
+  ['sort', 2],
   ['partial', 2],
   ['compose', 2],
   ['pipe', 2],
+  ['flip', 1],
+]);
+const VALUES = new Set<Keyword>([
+  'add', 'subtract', 'multiply', 'divide', 'remainder',
+  'cons', 'head', 'tail', 'range', 'length', 'reverse', 'append', 'take', 'drop', 'zip',
+  'partial', 'compose', 'flip',
 ]);
 
 const overflowed = (err: unknown) =>
@@ -111,7 +129,7 @@ export class Session {
         if (outcome.kind !== 'done') return outcome;
         continue;
       }
-      if (node.kind === 'lambda') throw new UsagiError('이름 없는 함수만 덩그러니 있어', node);
+      if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있어', node);
       const word = node.word;
       if (word.kind === 'funcCall' || word.kind === 'varCall') {
         cur.i--;
@@ -135,6 +153,7 @@ export class Session {
         const outcome = this.condition(node, cur, env, scope);
         if (outcome) return outcome;
       } else if (this.isStatementOperator(keyword)) {
+        this.unused(node, keyword);
         cur.i--;
         this.expr(cur, env, scope, true);
       } else {
@@ -171,7 +190,7 @@ export class Session {
   private skip(cur: Cursor, env: Env, scope: Scope): void {
     const node = cur.nodes[cur.i++];
     if (node.kind === 'block' || node.kind === 'func') return;
-    if (node.kind === 'lambda') throw new UsagiError('이름 없는 함수만 덩그러니 있어', node);
+    if (node.kind === 'lambda') throw new UsagiError('익명 함수만 덩그러니 있어', node);
     const word = node.word;
     if (word.kind === 'funcCall' || word.kind === 'varCall') {
       cur.i--;
@@ -192,6 +211,7 @@ export class Session {
       if (!cur.nodes[cur.i]) throw new UsagiError('조건문 다음에 할 일이 없어', node);
       this.skip(cur, env, scope);
     } else if (this.isStatementOperator(keyword)) {
+      this.unused(node, keyword);
       cur.i--;
       this.expr(cur, env, scope, false);
     } else {
@@ -298,7 +318,7 @@ export class Session {
     const arity = word?.kind === 'keyword' ? OPERATORS.get(word.keyword) : undefined;
     if (node?.kind !== 'token' || word?.kind !== 'keyword' || !arity) {
       const hint = word?.kind === 'number' ? `. 음수라면 '${at.text}${(node as Token).text}'처럼 붙여 써` : '';
-      throw new UsagiError(`'${at.text}' 다음엔 값을 받는 우사기 말이 와야 해${hint}`, node ?? at);
+      throw new UsagiError(`'${at.text}' 다음엔 인자를 받는 키워드가 와야 해${hint}`, node ?? at);
     }
     cur.i++;
     return { kind: 'builtin', name: node.text, ops: [word.keyword], arity, bound: [], at: node };
@@ -326,22 +346,65 @@ export class Session {
       case 'cons':
         return { kind: 'cons', head: args[0], tail: this.list(args[1], at) };
       case 'head':
-        return this.filled(args[0], at, '첫 값이').head;
+        return this.filled(args[0], at, '첫 원소가').head;
       case 'tail':
         return this.filled(args[0], at, '나머지가').tail;
       case 'range':
         return this.range(this.integer(args[0], at), this.integer(args[1], at));
+      case 'length':
+        return BigInt(this.items(args[0], at).length);
+      case 'reverse':
+        return this.items(args[0], at).reduce<List>((tail, head) => ({ kind: 'cons', head, tail }), EMPTY);
+      case 'append':
+        return this.build(this.items(args[0], at), this.list(args[1], at));
+      case 'take': {
+        const count = this.count(args[0], at);
+        const items: Value[] = [];
+        for (let list = this.list(args[1], at); list.kind === 'cons' && BigInt(items.length) < count; list = list.tail) items.push(list.head);
+        return this.build(items);
+      }
+      case 'drop': {
+        let count = this.count(args[0], at);
+        let list = this.list(args[1], at);
+        for (; count > 0n && list.kind === 'cons'; count--) list = list.tail;
+        return list;
+      }
+      case 'zip': {
+        const left = this.items(args[0], at);
+        const right = this.items(args[1], at);
+        return this.build(left.slice(0, right.length).map((item, k) => this.build([item, right[k]])));
+      }
       case 'map': {
         const fn = this.function(args[0], 1, at);
         return this.build(this.items(args[1], at).map((item) => this.call(fn, [item])));
       }
       case 'filter': {
         const fn = this.function(args[0], 1, at);
-        return this.build(this.items(args[1], at).filter((item) => this.integer(this.call(fn, [item]), at) !== 0n));
+        return this.build(this.items(args[1], at).filter((item) => this.holds(fn, item, at)));
       }
       case 'fold': {
         const fn = this.function(args[0], 2, at);
         return this.items(args[2], at).reduce((acc, item) => this.call(fn, [acc, item]), args[1]);
+      }
+      case 'flatMap': {
+        const fn = this.function(args[0], 1, at);
+        const items: Value[] = [];
+        for (const item of this.items(args[1], at)) {
+          for (let list = this.yielded(this.call(fn, [item]), at); list.kind === 'cons'; list = list.tail) items.push(list.head);
+        }
+        return this.build(items);
+      }
+      case 'any':
+        return this.search(this.function(args[0], 1, at), args[1], true, at) === undefined ? 0n : 1n;
+      case 'all':
+        return this.search(this.function(args[0], 1, at), args[1], false, at) === undefined ? 1n : 0n;
+      case 'find': {
+        const found = this.search(this.function(args[0], 1, at), args[1], true, at);
+        return found === undefined ? EMPTY : this.build([found]);
+      }
+      case 'sort': {
+        const fn = this.function(args[0], 2, at);
+        return this.build(this.sort(this.items(args[1], at), fn, at));
       }
       case 'partial': {
         const fn = this.func(args[0], at);
@@ -352,19 +415,79 @@ export class Session {
         return { kind: 'composed', name: at.text, first: this.func(args[0], at), then: this.function(args[1], 1, at) };
       case 'pipe':
         return this.call(this.function(args[1], 1, at), [args[0]]);
+      case 'flip': {
+        const fn = this.func(args[0], at);
+        if (this.arity(fn) < 2) throw new UsagiError(`'${at.text}'에 넘긴 함수는 매개변수가 2개 이상이어야 해`, at);
+        return { kind: 'flipped', name: at.text, fn, bound: [] };
+      }
       default:
         return this.arithmetic(keyword, args[0], args[1], at);
     }
   }
 
+  private isList(value: Value): value is List {
+    return typeof value === 'object' && (value.kind === 'cons' || value.kind === 'empty');
+  }
+
   private list(value: Value, at: Token): List {
-    if (typeof value === 'object' && (value.kind === 'cons' || value.kind === 'empty')) return value;
-    throw new UsagiError(`'${at.text}'에는 목록이 와야 하는데 ${this.kind(value)} 왔어`, at);
+    if (this.isList(value)) return value;
+    throw new UsagiError(`'${at.text}'에는 리스트가 와야 하는데 ${this.kind(value)} 왔어`, at);
+  }
+
+  private yielded(value: Value, at: Token): List {
+    if (this.isList(value)) return value;
+    throw new UsagiError(`'${at.text}'에 넘긴 함수는 리스트를 반환해야 하는데 ${this.kind(value)} 나왔어`, at);
+  }
+
+  private count(value: Value, at: Token): bigint {
+    const count = this.integer(value, at);
+    if (count < 0n) throw new UsagiError(`'${at.text}'에는 0 이상의 수가 와야 하는데 ${this.subject(count)} 왔어`, at);
+    return count;
+  }
+
+  private holds(fn: Func, item: Value, at: Token): boolean {
+    return this.integer(this.call(fn, [item]), at) !== 0n;
+  }
+
+  private search(fn: Func, value: Value, wanted: boolean, at: Token): Value | undefined {
+    for (let list = this.list(value, at); list.kind === 'cons'; list = list.tail) {
+      if (this.holds(fn, list.head, at) === wanted) return list.head;
+    }
+    return undefined;
+  }
+
+  private sort(items: Value[], fn: Func, at: Token): Value[] {
+    let sorted = items;
+    for (let width = 1; width < sorted.length; width *= 2) {
+      const merged: Value[] = [];
+      for (let start = 0; start < sorted.length; start += 2 * width) {
+        const middle = Math.min(start + width, sorted.length);
+        const end = Math.min(start + 2 * width, sorted.length);
+        let i = start;
+        let j = middle;
+        while (i < middle && j < end) merged.push(this.before(fn, sorted[j], sorted[i], at) ? sorted[j++] : sorted[i++]);
+        while (i < middle) merged.push(sorted[i++]);
+        while (j < end) merged.push(sorted[j++]);
+      }
+      sorted = merged;
+    }
+    return sorted;
+  }
+
+  private before(fn: Func, first: Value, second: Value, at: Token): boolean {
+    const result = this.call(fn, [first, second]);
+    if (result === 1n || result === 0n) return result === 1n;
+    const shown = typeof result === 'bigint' ? this.subject(result) : this.kind(result);
+    throw new UsagiError(`'${at.text}'에 넘긴 함수는 1이나 0을 반환해야 하는데 ${shown} 나왔어`, at);
+  }
+
+  private subject(value: bigint): string {
+    return `${value}${'2459'.includes(String(value).slice(-1)) ? '가' : '이'}`;
   }
 
   private filled(value: Value, at: Token, part: string): Extract<List, { kind: 'cons' }> {
     const list = this.list(value, at);
-    if (list.kind === 'empty') throw new UsagiError(`'${at.text}'... 빈 목록에는 ${part} 없어`, at);
+    if (list.kind === 'empty') throw new UsagiError(`'${at.text}'... 빈 리스트에는 ${part} 없어`, at);
     return list;
   }
 
@@ -374,8 +497,8 @@ export class Session {
     return items;
   }
 
-  private build(items: Value[]): List {
-    let list = EMPTY;
+  private build(items: Value[], tail: List = EMPTY): List {
+    let list = tail;
     for (let k = items.length - 1; k >= 0; k--) list = { kind: 'cons', head: items[k], tail: list };
     return list;
   }
@@ -399,11 +522,12 @@ export class Session {
   }
 
   private isFunc(value: Value): value is Func {
-    return typeof value === 'object' && (value.kind === 'closure' || value.kind === 'composed' || value.kind === 'builtin');
+    return typeof value === 'object' && (value.kind === 'closure' || value.kind === 'composed' || value.kind === 'builtin' || value.kind === 'flipped');
   }
 
   private arity(fn: Func): number {
     if (fn.kind === 'composed') return this.arity(fn.first);
+    if (fn.kind === 'flipped') return this.arity(fn.fn) - fn.bound.length;
     return fn.kind === 'closure' ? fn.params.length : fn.arity;
   }
 
@@ -412,7 +536,7 @@ export class Session {
     const values: Value[] = [];
     while (values.length < arity) {
       const next = cur.nodes[cur.i];
-      if (this.ends(next)) throw new UsagiError(`'${at.text}'에 넘길 값이 모자라. 매개변수는 ${arity}개인데 ${values.length}개만 있어`, at);
+      if (this.ends(next)) throw new UsagiError(`'${at.text}'에 넘길 인자가 모자라. 매개변수는 ${arity}개인데 ${values.length}개만 있어`, at);
       this.reaches(at, next);
       values.push(this.expr(cur, env, scope, live));
     }
@@ -430,9 +554,17 @@ export class Session {
     this.io.warn?.(warning(`'${at.text}'가 ${next.line}줄의 '${next.text}'까지 인자로 가져갔어. 인자를 빠뜨린 게 아니라면 ${next.line}줄을 더 들여 써`, at));
   }
 
+  private unused(token: Token, keyword: Keyword): void {
+    if (!VALUES.has(keyword) || this.warned.has(token)) return;
+    this.warned.add(token);
+    const { Return, Print } = this.words.lang;
+    this.io.warn?.(warning(`'${token.text}' 결과를 아무도 안 써. 반환하려면 앞에 '${Return}'를, 출력하려면 '${Print}'를 붙여`, token));
+  }
+
   private partial(fn: Func, value: Value): Func {
     if (fn.kind === 'composed') return { ...fn, first: this.partial(fn.first, value) };
     if (fn.kind === 'builtin') return { ...fn, arity: fn.arity - 1, bound: [...fn.bound, value] };
+    if (fn.kind === 'flipped') return { ...fn, bound: [...fn.bound, value] };
     const [slot, ...rest] = fn.params;
     return { ...fn, params: rest, env: { slot, value, next: fn.env } };
   }
@@ -443,6 +575,12 @@ export class Session {
       if (fn.kind === 'composed') {
         args = [this.call(fn.first, args)];
         fn = fn.then;
+        continue;
+      }
+      if (fn.kind === 'flipped') {
+        const [first, second, ...rest] = [...fn.bound, ...args];
+        args = [second, first, ...rest];
+        fn = fn.fn;
         continue;
       }
       let env = fn.env;
@@ -466,7 +604,7 @@ export class Session {
     const value = word.kind === 'varCall' ? this.lookup(env, word.slot) : undefined;
     if (word.kind === 'varCall' && value === undefined) throw this.unbound(token, word.slot);
     if (value !== undefined && this.isFunc(value)) return value;
-    throw new UsagiError(`'${token.text}'... 함수가 아니라서 부를 수 없어`, token);
+    throw new UsagiError(`'${token.text}'... 함수가 아니라서 호출할 수 없어`, token);
   }
 
   private find(scope: Scope | null, index: number, token: Token): Closure {
@@ -498,7 +636,7 @@ export class Session {
   private bind(pattern: Pattern, value: Value, env: Env): Env {
     if (typeof pattern === 'number') return { slot: pattern, value, next: env };
     const list = this.list(value, pattern.at);
-    if (list.kind === 'empty') throw new UsagiError(`'${pattern.at.text}'... 빈 목록은 나눠 묶을 수 없어`, pattern.at);
+    if (list.kind === 'empty') throw new UsagiError(`'${pattern.at.text}'... 빈 리스트는 구조 분해할 수 없어`, pattern.at);
     return this.bind(pattern.tail, list.tail, this.bind(pattern.head, list.head, env));
   }
 
@@ -526,7 +664,7 @@ export class Session {
 
   private kind(value: Value): string {
     if (typeof value === 'bigint') return '정수가';
-    return this.isFunc(value) ? '함수가' : '목록이';
+    return this.isFunc(value) ? '함수가' : '리스트가';
   }
 
   private arithmetic(op: Keyword, left: Value, right: Value, at: Token): bigint {
@@ -572,7 +710,7 @@ export class Session {
 
   private char(value: Value, at: Token): string {
     const code = this.integer(value, at);
-    if (code < 0n || code > 0x10ffffn) throw new UsagiError(`${code}번 글자는 없어`, at);
+    if (code < 0n || code > 0x10ffffn) throw new UsagiError(`${code}번 문자는 없어`, at);
     return String.fromCodePoint(Number(code));
   }
 
@@ -585,7 +723,7 @@ export class Session {
   }
 
   private unbound(token: Token, slot: number): UsagiError {
-    return new UsagiError(`'${token.text}'... 글자 수가 ${slot}인 변수는 묶은 적이 없어`, token);
+    return new UsagiError(`'${token.text}'... 글자 수가 ${slot}인 변수는 정의되지 않았어`, token);
   }
 
   private tooDeep(): string {
