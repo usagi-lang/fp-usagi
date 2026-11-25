@@ -23,7 +23,7 @@ export function parse(source: string, words: Words): Node[] {
   function params(): number[] {
     const slots: number[] = [];
     for (let token = tokens[i]; token?.word.kind === 'variable'; token = tokens[++i]) {
-      if (slots.includes(token.word.slot)) throw new UsagiError(`매개변수 '${token.text}'와 글자 수가 같은 게 이미 있어`, token);
+      if (slots.includes(token.word.slot)) throw new UsagiError(`매개변수 '${token.text}'와 글자 수가 같은 매개변수가 이미 있네!`, token);
       slots.push(token.word.slot);
     }
     return slots;
@@ -38,14 +38,14 @@ export function parse(source: string, words: Words): Node[] {
       if (isBlockStart(token)) {
         nodes.push({ kind: 'block', body: sequence({ matches: isBlockEnd, word: BlockEnd, opener: token }), line: token.line, col: token.col });
       } else if (isBlockEnd(token) || word.kind === 'funcEnd') {
-        throw new UsagiError(closer ? `'${closer.word}'(으)로 닫아야 하는데 '${token.text}'가 나왔어` : `연 적 없는 '${token.text}'가 나왔어`, token);
+        throw new UsagiError(closer ? `'${closer.word}'(으)로 닫아야 하는데 '${token.text}'가 나왔네!` : `연 적 없는 '${token.text}'가 나왔네!`, token);
       } else if (word.kind === 'keyword' && word.keyword === 'functionStart') {
         nodes.push(fn(token));
       } else {
         nodes.push(token);
       }
     }
-    if (closer) throw new UsagiError(`'${closer.word}'(으)로 닫아야 하는데 코드가 끝났어`, closer.opener);
+    if (closer) throw new UsagiError(`'${closer.word}'(으)로 닫아야 하는데 코드가 끝나 버렸어!`, closer.opener);
     return nodes;
   }
 
@@ -63,7 +63,7 @@ export function parse(source: string, words: Words): Node[] {
     const ps = params();
     const open = tokens[i];
     if (!isBlockStart(open)) {
-      throw new UsagiError(`익명 함수는 매개변수 다음에 '${words.lang.BlockStart}'로 본문을 열어야 해`, open ?? start);
+      throw new UsagiError(`익명 함수는 매개변수 다음에 '${words.lang.BlockStart}'로 본문을 열면 돼`, open ?? start);
     }
     i++;
     const body = sequence({ matches: isBlockEnd, word: BlockEnd, opener: open });
